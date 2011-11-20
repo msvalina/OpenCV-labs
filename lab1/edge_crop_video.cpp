@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
         if( c == 27 ) break;
     }
 
+    /*
     VideoCapture cap;
     if (argc==1) {
     	cap.open(0); // open the default camera
@@ -81,6 +82,7 @@ int main(int argc, char** argv) {
         char c = waitKey(10);
         if( c == 27 ) break;
     }
+    */
 
     return 0;
 }
@@ -127,7 +129,7 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
                 << "x\t y\t height\t width\n"
                 << box.x << "\t" << box.y << "\t" 
                 << box.height << "\t" << box.width << "\n";
-            draw_box( image, box );
+            //draw_box( image, box );
             crop_image( image, box);
             }
             break;
