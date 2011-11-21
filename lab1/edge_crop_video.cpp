@@ -21,6 +21,12 @@ bool drawing_box = false;
 bool croping_roi = false;
 bool running_video = false;
 
+void help(){
+    cout << "\tr za cropanje \n"
+    << "\tv za video \n"
+    << "\tc za canny \n";
+    }
+
 int main(int argc, char** argv) {
 
     cout << "LoadImage is CC work, do what you like " << endl;
@@ -29,6 +35,7 @@ int main(int argc, char** argv) {
         cout << " Usage: "<< argv[0] <<" <image> " << endl;
         return -1;
     }
+    help();
 
     char* imageName = argv[1];
     Mat mat_image;
