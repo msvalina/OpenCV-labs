@@ -125,6 +125,12 @@ void crop_image( Mat& img, Rect rect ){
     Mat imgRoi = img(rect);
     namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
     imshow( "ImgROI", imgRoi );
+    /* gornji kod kopira samo header u imgRoi
+     * ako treba kopirat i sliku moze se ovako:
+    imgRoi.copyTo(temp);
+    namedWindow( "temp", CV_WINDOW_AUTOSIZE );
+    imshow( "temp", temp );
+    */
 }
 
 void canny_edge(){
