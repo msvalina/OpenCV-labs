@@ -12,33 +12,38 @@
 using namespace cv;
 using namespace std;
 
+void help(){
+    cout << "This is Crative Commons work, do what you like... " << endl;
+    cout << "Usage: ./binary <image_name> " << endl;
+    cout << "Hot keys: \n"
+                "\tr za cropanje \n"
+                "\tv za video \n"
+                "\tc za canny \n" << endl;
+    }
+
 void onMouse( int event, int x, int y, int flags, void* param );
 void draw_box( Mat& img, Rect rect );
 void crop_image( Mat& img, Rect rect );
+void canny_edge();
+
+Mat gray, temp, mat_image, gray_image, frame;
 
 Rect box;
 bool drawing_box = false;
 bool croping_roi = false;
 bool running_video = false;
+bool running_canny = false;
 
-void help(){
-    cout << "\tr za cropanje \n"
-    << "\tv za video \n"
-    << "\tc za canny \n";
-    }
 
 int main(int argc, char** argv) {
-
-    cout << "LoadImage is CC work, do what you like " << endl;
+    help();
     
     if (argc < 2) {
         cout << " Usage: "<< argv[0] <<" <image> " << endl;
         return -1;
     }
-    help();
 
     char* imageName = argv[1];
-    Mat mat_image;
     mat_image = imread( imageName, CV_LOAD_IMAGE_COLOR);
  
     if( !mat_image.data ) {
@@ -46,14 +51,10 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    Mat gray_image;
-    Mat temp;
-    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
-    
     while ( 1 ){
         mat_image.copyTo(temp);
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
-        imshow( imageName, temp );
+        imshow( imageName, mat_image );
 
         int c = waitKey(15);
         switch( (char)c )
@@ -63,21 +64,24 @@ int main(int argc, char** argv) {
                 return 0;
             case 'c':
                 cout << "Calling canny... \n";
-                Canny(gray_image, gray_image, 50, 200, 3);
-                
-                namedWindow( "Gray image", CV_WINDOW_AUTOSIZE );
-                imshow( "Gray image", gray_image );
+                running_canny = true;
+                running_video = false;
+                croping_roi = false;
+                canny_edge();
                 break;
             case 'r':
                 croping_roi = true;
                 running_video = false;
+                running_canny = false;
+
                 if( croping_roi ) {
                     cout << "Setting callback, Image ROI i crop mode ...\n";
                     setMouseCallback( imageName, onMouse, (void*)&mat_image );
-                if( drawing_box ) {
-                    draw_box( temp, box );
+                    if( drawing_box ) {
+                        draw_box( temp, box );
+                    }
                 }
-                }
+
                 break;
             case 'v':
                 cout << "Camera mode... \n"
@@ -126,6 +130,13 @@ void crop_image( Mat& img, Rect rect ){
 }
 
 
+void canny_edge(){
+    Mat gray_image;
+    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
+    Canny( gray_image, gray_image, 50, 100, 3 );
+    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
+    imshow( "canny edge", gray_image );
+}
 
 void draw_box( Mat& img, Rect rect ){
     rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
