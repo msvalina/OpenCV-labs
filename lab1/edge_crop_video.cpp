@@ -1,10 +1,3 @@
-// konstruktori i fje poicinju malim slovima
-// klase i strukture velikim
-// Mat I;
-// IplImage pI = I;
-// Mat I;
-// IplImage* pI = &I.operator IplImage();
-// IplImage* ipl_img = new IplImage( mat_image );
 #include <cv.h>
 #include <highgui.h>
 #include <iostream>
@@ -17,26 +10,28 @@ void help(){
     cout << "Usage: ./binary <image_name> " << endl;
     cout << "Hot keys: \n"
                 "\tr za cropanje \n"
+                "\tR za kill crop win\n"
                 "\tv za video \n"
-                "\tc za canny \n" << endl;
+                "\tV za quit video \n"
+                "\tc za canny \n" 
+                "\tC za kill canny win\n";
     }
 
 void onMouse( int event, int x, int y, int flags, void* param );
 void draw_box( Mat& img, Rect rect );
 void crop_image( Mat& img, Rect rect );
 void canny_edge();
+void init_camera();
 
 Mat gray, temp, mat_image, gray_image, frame;
 
 Rect box;
 bool drawing_box = false;
-bool croping_roi = false;
-bool running_video = false;
-bool running_canny = false;
-
+char ** global_argv;
 
 int main(int argc, char** argv) {
     help();
+    global_argv = argv;
     
     if (argc < 2) {
         cout << " Usage: "<< argv[0] <<" <image> " << endl;
@@ -52,7 +47,6 @@ int main(int argc, char** argv) {
     }
 
     while ( 1 ){
-        mat_image.copyTo(temp);
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
         imshow( imageName, mat_image );
 
@@ -62,84 +56,31 @@ int main(int argc, char** argv) {
             case 27:
                 cout << "Exiting ... \n ";
                 return 0;
+
             case 'c':
-                cout << "Calling canny... \n";
-                running_canny = true;
-                running_video = false;
-                croping_roi = false;
                 canny_edge();
                 break;
-            case 'r':
-                croping_roi = true;
-                running_video = false;
-                running_canny = false;
 
-                if( croping_roi ) {
-                    cout << "Setting callback, Image ROI i crop mode ...\n";
-                    setMouseCallback( imageName, onMouse, (void*)&mat_image );
-                    if( drawing_box ) {
-                        draw_box( temp, box );
-                    }
-                }
-
+            case 'C':
+                destroyWindow("canny edge");
                 break;
+
+            case 'r':
+                cout << "Setting callback, calling crop_image  ...\n";
+                setMouseCallback( imageName, onMouse, (void*)&mat_image );
+                break;
+
+            case 'R':
+                destroyWindow( "ImgROI" );
+                break;
+
             case 'v':
-                cout << "Camera mode... \n"
-                    << "Destroying croping mode \n";
-                if ( croping_roi ) {
-                    destroyWindow( imageName );
-                    croping_roi = false;
-                }
-                running_video = true;
-                if( running_video ){
-                    VideoCapture cap(0);
-                    if( !cap.isOpened() ){
-                        cerr << "fail preko default camere \n";
-                        cout << "isprobavam argv2 " 
-                            << argv[2] << endl;
-                        cap.open( argv[2] );
-                        if( !cap.isOpened() ){
-                            cerr << "fail i preko argv[2] \n";
-                            return -1;
-                        }
-
-                    }
-
-                    Mat frame;
-                    while( 1 ){
-                        cap >> frame;
-                        if(!frame.data) break;
-                        namedWindow( "camera", CV_WINDOW_AUTOSIZE );
-                        imshow( "camera", frame );
-                        char c = waitKey(10);
-                        if( c == 'q' ) break;
-                    }
-
-                }
+                init_camera();
                 break;
         }
     }
 
     return 0;
-}
-
-void crop_image( Mat& img, Rect rect ){
-    Mat imgRoi = img(rect);
-    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgROI", imgRoi );
-}
-
-
-void canny_edge(){
-    Mat gray_image;
-    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
-    Canny( gray_image, gray_image, 50, 100, 3 );
-    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
-    imshow( "canny edge", gray_image );
-}
-
-void draw_box( Mat& img, Rect rect ){
-    rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
 }
 
 void onMouse( int event, int x, int y, int flags, void* param ) {
@@ -175,3 +116,51 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
             break;
     }
 } 
+
+void draw_box( Mat& img, Rect rect ){
+    rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
+}
+
+void crop_image( Mat& img, Rect rect ){
+    Mat imgRoi = img(rect);
+    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
+    imshow( "ImgROI", imgRoi );
+}
+
+void canny_edge(){
+    cout << "Calling canny... \n";
+    Mat gray_image;
+    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
+    Canny( gray_image, gray_image, 50, 100, 3 );
+    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
+    imshow( "canny edge", gray_image );
+}
+
+void init_camera(){
+    cout << "Starting camera mode... \n";
+    VideoCapture cap(0);
+    if( !cap.isOpened() ){
+        cerr << "fail preko default camere \n";
+        cout << "isprobavam argv2 " 
+            << global_argv[2] << endl;
+        cap.open( global_argv[2] );
+        if( !cap.isOpened() ){
+            cerr << "fail i preko argv[2] \n";
+        }
+
+    }
+    while( 1 ){
+        cap >> frame;
+        if(!frame.data) break;
+        namedWindow( "camera", CV_WINDOW_AUTOSIZE );
+        imshow( "camera", frame );
+        char c = waitKey(10);
+        if( c == 'V' ){
+            destroyWindow("camera");
+            break;
+        }
+    }
+}
+
+
+
