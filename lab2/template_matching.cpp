@@ -5,34 +5,45 @@
 using namespace cv;
 using namespace std;
 
+void help(){
+    cout << "This is Crative Commons work, do what you like... " << endl;
+    cout << "Usage: ./binary <image_name> " << endl;
+    cout << "Hot keys: \n"
+                "\tr for croping \n"
+                "\tR to kill crop win\n"
+                "\tv for video \n"
+                "\tV to quit video \n"
+                "\tc for canny edge detetction \n" 
+                "\tC to kill canny win\n"
+                "\tt for template matching\n";
+                "\tT for to kill template matching windows\n";
+    }
+
 void onMouse( int event, int x, int y, int flags, void* param );
 void draw_box( Mat& img, Rect rect );
 void crop_image( Mat& img, Rect rect );
-void match_template( Mat& img, Rect rect);
+void canny_edge();
+void init_camera();
+void match_template_on_crop( int match_method, Mat& templ );
+
+Mat gray, temp, mat_image, gray_image, frame;
+Mat templ, result, imgRoi;
 
 Rect box;
 bool drawing_box = false;
-bool croping_roi = false;
-bool running_video = false;
-
-void help(){
-    cout << "\tr za cropanje \n"
-    << "\tv za video \n"
-    << "\tc za canny \n";
-    }
+char ** global_argv;
+int match_method = 0;
 
 int main(int argc, char** argv) {
-
-    cout << "LoadImage is CC work, do what you like " << endl;
+    help();
+    global_argv = argv;
     
     if (argc < 2) {
         cout << " Usage: "<< argv[0] <<" <image> " << endl;
         return -1;
     }
-    help();
 
     char* imageName = argv[1];
-    Mat mat_image;
     mat_image = imread( imageName, CV_LOAD_IMAGE_COLOR);
  
     if( !mat_image.data ) {
@@ -40,14 +51,9 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    Mat gray_image;
-    Mat temp;
-    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
-    
     while ( 1 ){
-        mat_image.copyTo(temp);
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
-        imshow( imageName, temp );
+        imshow( imageName, mat_image );
 
         int c = waitKey(15);
         switch( (char)c )
@@ -55,74 +61,40 @@ int main(int argc, char** argv) {
             case 27:
                 cout << "Exiting ... \n ";
                 return 0;
+
             case 'c':
-                cout << "Calling canny... \n";
-                Canny(gray_image, gray_image, 50, 200, 3);
-                
-                namedWindow( "Gray image", CV_WINDOW_AUTOSIZE );
-                imshow( "Gray image", gray_image );
+                canny_edge();
                 break;
+
+            case 'C':
+                destroyWindow("canny edge");
+                break;
+
             case 'r':
-                croping_roi = true;
-                running_video = false;
-                if( croping_roi ) {
-                    cout << "Setting callback, Image ROI i crop mode ...\n";
-                    setMouseCallback( imageName, onMouse, (void*)&mat_image );
-                if( drawing_box ) {
-                    draw_box( temp, box );
-                }
-                }
+                cout << "Setting callback, calling crop_image  ...\n";
+                setMouseCallback( imageName, onMouse, (void*)&mat_image );
                 break;
+
+            case 'R':
+                destroyWindow( "ImgROI" );
+                break;
+
             case 'v':
-                cout << "Camera mode... \n"
-                    << "Destroying croping mode \n";
-                if ( croping_roi ) {
-                    destroyWindow( imageName );
-                    croping_roi = false;
-                }
-                running_video = true;
-                if( running_video ){
-                    VideoCapture cap(0);
-                    if( !cap.isOpened() ){
-                        cerr << "fail preko default camere \n";
-                        cout << "isprobavam argv2 " 
-                            << argv[2] << endl;
-                        cap.open( argv[2] );
-                        if( !cap.isOpened() ){
-                            cerr << "fail i preko argv[2] \n";
-                            return -1;
-                        }
+                init_camera();
+                break;
 
-                    }
+            case 't':
+                match_template_on_crop( 2, imgRoi );
+                break;
 
-                    Mat frame;
-                    while( 1 ){
-                        cap >> frame;
-                        if(!frame.data) break;
-                        namedWindow( "camera", CV_WINDOW_AUTOSIZE );
-                        imshow( "camera", frame );
-                        char c = waitKey(10);
-                        if( c == 'q' ) break;
-                    }
-
-                }
+            case 'T':
+                destroyWindow( "source" );
+                destroyWindow( "result" );
                 break;
         }
     }
 
     return 0;
-}
-
-void crop_image( Mat& img, Rect rect ){
-    Mat temp;
-    Mat imgRoi = img(rect).copyTo(temp);
-    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgROI", imgRoi );
-}
-
-
-void draw_box( Mat& img, Rect rect ){
-    rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
 }
 
 void onMouse( int event, int x, int y, int flags, void* param ) {
@@ -159,14 +131,92 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
     }
 } 
 
-void match_template( Mat& img, Rect rect ){
-    Mat templ = img(rect);
-    Mat result;
-    matchTemplate( img, templ, result, CV_TM_SQDIFF_NORMED );
-    // u result sprema mapu usporedenih rezultatata, treba biti 32
-    // postoji i gpu verzija
-    //gpu::matchTemplate( img, templ, result, CV_TM_SQDIFF_NORMED );
-
+void draw_box( Mat& img, Rect rect ){
+    rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
 }
 
+void crop_image( Mat& img, Rect rect ){
+    imgRoi = img(rect);
+    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
+    imshow( "ImgROI", imgRoi );
+    /* gornji kod kopira samo header u imgRoi
+     * ako treba kopirat i sliku moze se ovako:
+    imgRoi.copyTo(temp);
+    namedWindow( "temp", CV_WINDOW_AUTOSIZE );
+    imshow( "temp", temp );
+    */
+}
+
+void canny_edge(){
+    cout << "Calling canny... \n";
+    Mat gray_image;
+    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
+    Canny( gray_image, gray_image, 50, 100, 3 );
+    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
+    imshow( "canny edge", gray_image );
+}
+
+void init_camera(){
+    cout << "Starting camera mode... \n";
+    VideoCapture cap(0);
+    if( !cap.isOpened() ){
+        cerr << "fail preko default camere \n";
+        cout << "isprobavam argv2 " 
+            << global_argv[2] << endl;
+        cap.open( global_argv[2] );
+        if( !cap.isOpened() ){
+            cerr << "fail i preko argv[2] \n";
+        }
+
+    }
+    while( 1 ){
+        cap >> frame;
+        if(!frame.data) break;
+        namedWindow( "camera", CV_WINDOW_AUTOSIZE );
+        imshow( "camera", frame );
+        char c = waitKey(10);
+        if( c == 'V' ){
+            destroyWindow("camera");
+            break;
+        }
+    }
+}
+
+void match_template_on_crop( int match_method, Mat& templ ){
+    /// Source image to display
+    Mat img_display;
+    mat_image.copyTo( img_display );
+
+    /// Create the result matrix
+    int result_cols =  mat_image.cols - templ.cols + 1;
+    int result_rows = mat_image.rows - templ.rows + 1;   
+
+    result.create( result_cols, result_rows, CV_32FC1 );
+
+    /// Do the Matching and Normalize
+    matchTemplate( mat_image, templ, result, match_method );
+    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+
+    /// Localizing the best match with minMaxLoc
+    double minVal; double maxVal; Point minLoc; Point maxLoc;
+    Point matchLoc;
+
+    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+
+
+    /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
+    if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
+    { matchLoc = minLoc; }
+    else  
+    { matchLoc = maxLoc; }
+
+    /// Show me what you got
+    rectangle( img_display, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
+
+    namedWindow( "source", CV_WINDOW_AUTOSIZE );
+    namedWindow( "result", CV_WINDOW_AUTOSIZE );
+    imshow( "source", img_display );
+    imshow( "result", result );
+}
 
