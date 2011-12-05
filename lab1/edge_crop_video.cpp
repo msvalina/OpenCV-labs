@@ -9,12 +9,12 @@ void help(){
     cout << "This is Crative Commons work, do what you like... " << endl;
     cout << "Usage: ./binary <image_name> " << endl;
     cout << "Hot keys: \n"
-                "\tr za cropanje \n"
-                "\tR za kill crop win\n"
-                "\tv za video \n"
-                "\tV za quit video \n"
-                "\tc za canny \n" 
-                "\tC za kill canny win\n";
+                "\tr for croping \n"
+                "\tR to kill crop win\n"
+                "\tv for video \n"
+                "\tV to quit video \n"
+                "\tc for canny edge detetction \n" 
+                "\tC to kill canny win\n";
     }
 
 void onMouse( int event, int x, int y, int flags, void* param );
