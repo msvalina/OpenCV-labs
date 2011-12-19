@@ -12,24 +12,27 @@ void help(){
                 "\tr/R toggle croping \n"
                 "\tc/C toggle camera \n"
                 "\ts/S toggle taking screenshoot\n"
+                "\th/H toggle Hough Transform on screenshot\n"
                 "\te/E toggle edge detetction \n" 
                 "\tt/T toggle template matching\n";
     }
 
+void canny_edge();
+void init_camera();
 void onMouse( int event, int x, int y, int flags, void* param );
 void draw_box( Mat& img, Rect rect );
 void crop_image( Mat& img, Rect rect );
-void canny_edge();
-void init_camera();
 void match_template_on_crop( int match_method, Mat& templ );
-void get_image();
+void getPoints( int event, int x, int y, int flags, void* param );
+void savePoint( int x, int y );
+void callHoughTransform( Mat& img, Rect rect );
 
-Mat gray, temp, mat_image, gray_image, frame;
-Mat templ, result, imgRoi;
+Mat gray, temp, mat_image, gray_image, frame, ss;
+Mat templ, result, imgRoi, imgRoi2;
 
 Point pt1, pt2, pt3, pt4;
 int n;
-Rect box;
+Rect box, box2;
 bool drawing_box = false;
 char ** global_argv;
 int match_method = 0;
@@ -84,44 +87,16 @@ int main(int argc, char** argv) {
                 destroyWindow( "source" );
                 destroyWindow( "result" );
                 break;
+            case 'S':
+                destroyWindow( "snapshot" );
+                break;
+            case 'h':
+                callHoughTransform( ss, box2 );
+                break;
         }
     }
 
     return 0;
-}
-
-void savePoint( int x, int y ){
-    n++;
-    if ( n == 1 ){
-        pt1.x = x;
-        pt1.y = y;
-        cout << pt1.x << " " << pt1.y << endl;
-    }
-    if ( n == 2 ){ 
-        pt2.x = x;
-        pt2.y = y;
-        cout << pt2.x << " " << pt2.y << endl;
-    }
-    if ( n == 3 ){ 
-        pt3.x = x;
-        pt3.y = y;
-        cout << pt3.x << " " << pt3.y << endl;
-    }
-    if ( n == 4 ){ 
-        pt4.x = x;
-        pt4.y = y;
-        cout << pt4.x << " " << pt4.y << endl;
-    }
-}
-
-void getPoints( int event, int x, int y, int flags, void* param ) {
-    switch( event ) {
-        case CV_EVENT_LBUTTONDOWN:
-                break;
-        case CV_EVENT_LBUTTONUP:
-                savePoint( x, y );
-                break;
-         }
 }
 
 void onMouse( int event, int x, int y, int flags, void* param ) {
@@ -152,8 +127,8 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
                 << "x\t y\t height\t width\n"
                 << box.x << "\t" << box.y << "\t" 
                 << box.height << "\t" << box.width << "\n";
-            //draw_box( image, box );
             crop_image( image, box);
+            draw_box( image, box );
             break;
     }
 } 
@@ -163,7 +138,7 @@ void draw_box( Mat& img, Rect rect ){
 }
 
 void crop_image( Mat& img, Rect rect ){
-    imgRoi = img(rect);
+    imgRoi = img( rect );
     namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
     imshow( "ImgROI", imgRoi );
     /* gornji kod kopira samo header u imgRoi
@@ -207,8 +182,7 @@ void init_camera(){
         }
         switch ( c ) {
             case 's':
-                Mat ss;
-                ss = frame;
+                frame.copyTo( ss );
                 namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
                 imshow( "snapshot", ss );
                 cout << " Setting MouseCallback getPoints " << endl;
@@ -239,7 +213,6 @@ void match_template_on_crop( int match_method, Mat& templ ){
 
     minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
-
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
     if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
     { matchLoc = minLoc; }
@@ -256,5 +229,60 @@ void match_template_on_crop( int match_method, Mat& templ ){
     imshow( "result", result );
 }
 
+void savePoint( int x, int y ){
+    n++;
+    if ( n == 1 ){
+        pt1.x = x;
+        pt1.y = y;
+        cout << pt1.x << " " << pt1.y << endl;
+    }
+    if ( n == 2 ){ 
+        pt2.x = x;
+        pt2.y = y;
+        cout << pt2.x << " " << pt2.y << endl;
+    }
+    if ( n == 3 ){ 
+        pt3.x = x;
+        pt3.y = y;
+        cout << pt3.x << " " << pt3.y << endl;
+    }
+    if ( n == 4 ){ 
+        pt4.x = x;
+        pt4.y = y;
+        box2.x = pt1.x;
+        box2.y = pt1.y;
+        box2.width = pt4.x - box2.x;
+        box2.height = pt4.y - box2.y;
+        cout << pt4.x << " " << pt4.y << endl;
+        cout << box2.width << " " << box2.height << endl;
+    }
+}
 
+void getPoints( int event, int x, int y, int flags, void* param ) {
+    switch( event ) {
+        case CV_EVENT_LBUTTONDOWN:
+                break;
+        case CV_EVENT_LBUTTONUP:
+                savePoint( x, y );
+                break;
+         }
+}
 
+void callHoughTransform( Mat& img, Rect rect ){
+    imgRoi2 = img( rect );
+    cvtColor( imgRoi2, temp, CV_RGB2GRAY );
+    Canny( temp, temp, 50, 100, 3 );
+    namedWindow( "ImgRoi2", CV_WINDOW_AUTOSIZE );
+    imshow( "ImgRoi2", temp );
+    vector<Vec2f> lines;
+    HoughLines(temp, lines, 1, CV_PI/180, 100, 0, 0 );
+    /*
+    temp: Output of the edge detector. It should be a grayscale image (although in fact it is a binary one)
+    lines: A vector that will store the parameters (r,\theta) of the detected lines
+    rho : The resolution of the parameter r in pixels. We use 1 pixel.
+    theta: The resolution of the parameter \theta in radians. We use 1 degree (CV_PI/180)
+    threshold: The minimum number of intersections to “detect” a line
+    srn and stn: Default parameters to zero. Check OpenCV reference for more info.
+    */ 
+
+}
