@@ -150,11 +150,11 @@ void crop_image( Mat& img, Rect rect ){
 }
 
 void canny_edge(){
-    cout << "Calling canny... \n";
-    Mat gray_image;
-    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
-    Canny( gray_image, gray_image, 50, 100, 3 );
-    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
+    cout << "calling canny... \n";
+    mat gray_image;
+    cvtcolor( mat_image, gray_image, cv_rgb2gray );
+    canny( gray_image, gray_image, 50, 100, 3 );
+    namedwindow( "canny edge", cv_window_autosize );
     imshow( "canny edge", gray_image );
 }
 
@@ -277,12 +277,22 @@ void callHoughTransform( Mat& img, Rect rect ){
     vector<Vec2f> lines;
     HoughLines(temp, lines, 1, CV_PI/180, 100, 0, 0 );
     /*
-    temp: Output of the edge detector. It should be a grayscale image (although in fact it is a binary one)
+    temp: Output of the edge detector. 
     lines: A vector that will store the parameters (r,\theta) of the detected lines
     rho : The resolution of the parameter r in pixels. We use 1 pixel.
     theta: The resolution of the parameter \theta in radians. We use 1 degree (CV_PI/180)
     threshold: The minimum number of intersections to “detect” a line
     srn and stn: Default parameters to zero. Check OpenCV reference for more info.
     */ 
+    // izvuci prvu linija, koja bi trebala vektor od dva elementa
+    // ro'' i theta
+    // prebacit ro u k.s. slike a ne ROI ro=ro'' +pt1.x*cos theta + 
+    //                                          +pt1.y*sin theta
+    // findExtrinsci, prdat xml, vraca R koji treba konvertirit u 3*3 pogledi rodrigez, 
+    // pomonzit R i P(iz xml, camera matrix) jedanko A
+    // pomnozit t i P dobijemo B
+    // dobijemo lamde
+    //  
+    // 
 
 }
