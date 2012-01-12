@@ -27,13 +27,15 @@ void crop_image( Mat& img, Rect rect );
 void match_template_on_crop( int match_method, Mat& templ );
 void getPoints( int event, int x, int y, int flags, void* param );
 void savePoint( int x, int y );
-void callHoughTransform( Mat& img, Rect rect );
+void callHoughTransform( );
+void cannyForHT( Mat& img, Rect rect );
 
 Mat temp, mat_image, gray_image, frame, ss;
 Mat templ, result, imgRoi, imgRoi2;
 Mat dst, detected_edges;
 
 Point pt1, pt2, pt3, pt4;
+vector<Point2f> imagePoints(4);
 int n;
 Rect box, box2;
 bool drawing_box = false;
@@ -97,7 +99,11 @@ int main(int argc, char** argv) {
                 destroyWindow( "snapshot" );
                 break;
             case 'h':
-                callHoughTransform( ss, box2 );
+                cannyForHT( ss, box2 );
+                //callHoughTransform( ss, box2 );
+                break;
+            case 'H':
+                callHoughTransform( );
                 break;
         }
     }
@@ -245,21 +251,25 @@ void savePoint( int x, int y ){
     if ( n == 1 ){
         pt1.x = x;
         pt1.y = y;
+        imagePoints[0] = Point2f( x, y );
         cout << pt1.x << " " << pt1.y << endl;
     }
     if ( n == 2 ){ 
         pt2.x = x;
         pt2.y = y;
+        imagePoints[1] = Point2f( x, y );
         cout << pt2.x << " " << pt2.y << endl;
     }
     if ( n == 3 ){ 
         pt3.x = x;
         pt3.y = y;
+        imagePoints[2] = Point2f( x, y );
         cout << pt3.x << " " << pt3.y << endl;
     }
     if ( n == 4 ){ 
         pt4.x = x;
         pt4.y = y;
+        imagePoints[3] = Point2f( x, y );
         box2.x = pt1.x;
         box2.y = pt1.y;
         box2.width = pt4.x - box2.x;
@@ -281,29 +291,25 @@ void getPoints( int event, int x, int y, int flags, void* param ) {
 void cannyTreshold2( int, void* ){
     Canny( temp, detected_edges, lowThreshold, lowThreshold*ratio, 3 );
     dst = Scalar::all(0);
-    imgRoi2.copyTo( dst, detected_edges);
+    temp.copyTo( dst, detected_edges);
     imshow( "imageRoi2", dst);
 }
 
-void callHoughTransform( Mat& img, Rect rect ){
+void cannyForHT( Mat& img, Rect rect ){
     imgRoi2 = img( rect );
     cvtColor( imgRoi2, temp, CV_RGB2GRAY);
     namedWindow( "imageRoi2", CV_WINDOW_AUTOSIZE);
     createTrackbar( "Min Treshold: ", "imageRoi2", &lowThreshold, max_lowThreshold, cannyTreshold2 );
+}
 
-/*    cvtColor( imgRoi2, temp, CV_RGB2GRAY );
-    Canny( temp, temp, 50, 100, 3 );
-    namedWindow( "ImgRoi2", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgRoi2", temp ); */
+
+void callHoughTransform( ){
     vector<Vec2f> lines;
-    HoughLines(temp, lines, 1, CV_PI/180, 100, 0, 0 );
+    HoughLines( temp, lines, 1, CV_PI/180, 100, 0, 0 );
+    // temp nije output edge detectora, treba izmjeniti
     /*
     temp: Output of the edge detector. 
     lines: A vector that will store the parameters (r,\theta) of the detected lines
-    rho : The resolution of the parameter r in pixels. We use 1 pixel.
-    theta: The resolution of the parameter \theta in radians. We use 1 degree (CV_PI/180)
-    threshold: The minimum number of intersections to “detect” a line
-    srn and stn: Default parameters to zero. Check OpenCV reference for more info.
     */ 
     // izvuci prvu linija, koja bi trebala vektor od dva elementa
     // ro'' i theta
@@ -314,33 +320,29 @@ void callHoughTransform( Mat& img, Rect rect ){
     // pomnozit t i P dobijemo B
     // dobijemo lamde
     //  
-    // 
-/*    Mat cdst;
-    imgRoi2.copyTo( cdst );
-    for( size_t i = 0; i < lines.size(); i++ )
-    {
-        float rho2 = lines[i][0], theta = lines[i][1];
-        Point pt1, pt2;
-        double a = cos(theta), b = sin(theta);
-        double x0 = a*rho2, y0 = b*rho2;
-        pt1.x = cvRound(x0 + 1000*(-b));
-        pt1.y = cvRound(y0 + 1000*(a));
-        pt2.x = cvRound(x0 - 1000*(-b));
-        pt2.y = cvRound(y0 - 1000*(a));
-        line( cdst, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
-    }
-    imshow("detected lines", cdst);
-/*
-    float rho_crtano = lines[0][0], theta = lines[0][1];
-    float rho; 
-    rho = rho_crtano + pt1.x * cos( theta ) + pt1.y * sin( theta );
-
+    float rho, rho_roi, theta;
+    rho_roi= lines[0][0];
+    theta = lines[0][1];
+    // prebacivanje u k.s. slike
+    rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
     
+    // ucitavanje 
     FileStorage fs("calib/cam.xml", FileStorage::READ);
-    cout << "procitao " << endl;
+    cout << "procitao " << rho << " " << theta << endl;
     Mat intrinsics, distortion;
     fs["camera_matrix"] >> intrinsics; //3*3
     fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-*/
+    cout << "idemo dalj" << endl;
+
+    vector<Point3f> objectPoints(4);
+    objectPoints[0] = Point3f( 0, 0, 0 );
+    objectPoints[1] = Point3f( 0, 0, 0 );
+    objectPoints[2] = Point3f( 0, 0, 0 );
+    objectPoints[3] = Point3f( 0, 0, 0 );
+    cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
+    cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
+
+    //cvFindExtrinsicCameraParams2() je zamjenjen s solvePnP()
+    //solvePnP(Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false);
     
 }
