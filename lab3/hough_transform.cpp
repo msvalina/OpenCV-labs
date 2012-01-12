@@ -332,7 +332,8 @@ void callHoughTransform( ){
     Mat intrinsics, distortion;
     fs["camera_matrix"] >> intrinsics; //3*3
     fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-    cout << "idemo dalj" << endl;
+    cout << "intrinsics = " << intrinsics <<  endl;
+    cout << "distortion = " << distortion <<  endl;
 
     vector<Point3f> objectPoints(4);
     objectPoints[0] = Point3f( 0, 0, 0 );
@@ -342,7 +343,22 @@ void callHoughTransform( ){
     cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
     cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
+    Mat rvec( 1, 3, CV_32FC1 );
+    Mat tvec( 1, 3, CV_32FC1 );
+    Mat R( 3, 3, CV_32FC1 );
+    Mat A( 3, 3, CV_32FC1 );
+    Mat B( 3, 1, CV_32FC1 );
+
     //cvFindExtrinsicCameraParams2() je zamjenjen s solvePnP()
-    //solvePnP(Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false);
+    solvePnP( Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false );
+    cout << "rvec = " << rvec <<  endl;
+    cout << "tvec = " << tvec <<  endl;
     
+    Rodrigues( rvec, R );
+    transpose( tvec, B );
+
+    cout << "R = " << R <<  endl;
+    cout << "B = " << B <<  endl;
+
+
 }
