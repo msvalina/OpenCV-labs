@@ -18,6 +18,8 @@ void help(){
     }
 
 void canny_edge();
+void cannyTreshold( int, void* );
+void cannyTreshold2( int, void* );
 void init_camera();
 void onMouse( int event, int x, int y, int flags, void* param );
 void draw_box( Mat& img, Rect rect );
@@ -27,8 +29,9 @@ void getPoints( int event, int x, int y, int flags, void* param );
 void savePoint( int x, int y );
 void callHoughTransform( Mat& img, Rect rect );
 
-Mat gray, temp, mat_image, gray_image, frame, ss;
+Mat temp, mat_image, gray_image, frame, ss;
 Mat templ, result, imgRoi, imgRoi2;
+Mat dst, detected_edges;
 
 Point pt1, pt2, pt3, pt4;
 int n;
@@ -36,6 +39,9 @@ Rect box, box2;
 bool drawing_box = false;
 char ** global_argv;
 int match_method = 0;
+int lowThreshold;
+int ratio = 3;
+int const max_lowThreshold = 100;
 
 int main(int argc, char** argv) {
     help();
@@ -151,11 +157,16 @@ void crop_image( Mat& img, Rect rect ){
 
 void canny_edge(){
     cout << "calling canny... \n";
-    mat gray_image;
-    cvtcolor( mat_image, gray_image, cv_rgb2gray );
-    canny( gray_image, gray_image, 50, 100, 3 );
-    namedwindow( "canny edge", cv_window_autosize );
-    imshow( "canny edge", gray_image );
+    cvtColor( mat_image, gray_image, CV_RGB2GRAY);
+    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE);
+    createTrackbar( "Min Treshold: ", "canny edge", &lowThreshold, max_lowThreshold, cannyTreshold );
+}
+
+void cannyTreshold( int, void* ){
+    Canny( gray_image, detected_edges, lowThreshold, lowThreshold*ratio, 3 );
+    dst = Scalar::all(0);
+    gray_image.copyTo( dst, detected_edges);
+    imshow( "canny edge", dst);
 }
 
 void init_camera(){
@@ -267,13 +278,23 @@ void getPoints( int event, int x, int y, int flags, void* param ) {
                 break;
          }
 }
+void cannyTreshold2( int, void* ){
+    Canny( temp, detected_edges, lowThreshold, lowThreshold*ratio, 3 );
+    dst = Scalar::all(0);
+    imgRoi2.copyTo( dst, detected_edges);
+    imshow( "imageRoi2", dst);
+}
 
 void callHoughTransform( Mat& img, Rect rect ){
     imgRoi2 = img( rect );
-    cvtColor( imgRoi2, temp, CV_RGB2GRAY );
+    cvtColor( imgRoi2, temp, CV_RGB2GRAY);
+    namedWindow( "imageRoi2", CV_WINDOW_AUTOSIZE);
+    createTrackbar( "Min Treshold: ", "imageRoi2", &lowThreshold, max_lowThreshold, cannyTreshold2 );
+
+/*    cvtColor( imgRoi2, temp, CV_RGB2GRAY );
     Canny( temp, temp, 50, 100, 3 );
     namedWindow( "ImgRoi2", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgRoi2", temp );
+    imshow( "ImgRoi2", temp ); */
     vector<Vec2f> lines;
     HoughLines(temp, lines, 1, CV_PI/180, 100, 0, 0 );
     /*
@@ -288,11 +309,38 @@ void callHoughTransform( Mat& img, Rect rect ){
     // ro'' i theta
     // prebacit ro u k.s. slike a ne ROI ro=ro'' +pt1.x*cos theta + 
     //                                          +pt1.y*sin theta
-    // findExtrinsci, prdat xml, vraca R koji treba konvertirit u 3*3 pogledi rodrigez, 
+    // findExtrinsci, predat xml, vraca R koji treba konvertirit u 3*3 pogledi rodrigez, 
     // pomonzit R i P(iz xml, camera matrix) jedanko A
     // pomnozit t i P dobijemo B
     // dobijemo lamde
     //  
     // 
+/*    Mat cdst;
+    imgRoi2.copyTo( cdst );
+    for( size_t i = 0; i < lines.size(); i++ )
+    {
+        float rho2 = lines[i][0], theta = lines[i][1];
+        Point pt1, pt2;
+        double a = cos(theta), b = sin(theta);
+        double x0 = a*rho2, y0 = b*rho2;
+        pt1.x = cvRound(x0 + 1000*(-b));
+        pt1.y = cvRound(y0 + 1000*(a));
+        pt2.x = cvRound(x0 - 1000*(-b));
+        pt2.y = cvRound(y0 - 1000*(a));
+        line( cdst, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
+    }
+    imshow("detected lines", cdst);
+/*
+    float rho_crtano = lines[0][0], theta = lines[0][1];
+    float rho; 
+    rho = rho_crtano + pt1.x * cos( theta ) + pt1.y * sin( theta );
 
+    
+    FileStorage fs("calib/cam.xml", FileStorage::READ);
+    cout << "procitao " << endl;
+    Mat intrinsics, distortion;
+    fs["camera_matrix"] >> intrinsics; //3*3
+    fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
+*/
+    
 }
