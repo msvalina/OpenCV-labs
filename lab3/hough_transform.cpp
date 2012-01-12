@@ -360,5 +360,8 @@ void callHoughTransform( ){
     cout << "R = " << R <<  endl;
     cout << "B = " << B <<  endl;
 
+    A = intrinsics * R;
+    cout << "A = " << A << endl;
+
 
 }
