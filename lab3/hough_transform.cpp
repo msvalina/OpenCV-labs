@@ -187,17 +187,18 @@ void init_camera(){
             cerr << "fail i preko argv[2] \n";
         }
     }
-    while( 1 ){
+    bool camera=true;
+    while( camera ){
         cap >> frame;
         if(!frame.data) break;
         namedWindow( "camera", CV_WINDOW_AUTOSIZE );
         imshow( "camera", frame );
         char c = waitKey(10);
-        if( c == 'C' ){
-            destroyWindow("camera");
-            break;
-        }
-        switch ( c ) {
+        switch( c ) {
+            case 'o':
+                camera = false;
+                cout << "???"<< endl;
+                break;
             case 's':
                 frame.copyTo( ss );
                 namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
@@ -207,6 +208,7 @@ void init_camera(){
                 break;
         }
     }
+    destroyWindow("camera");
 }
 
 void match_template_on_crop( int match_method, Mat& templ ){
