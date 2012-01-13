@@ -307,7 +307,7 @@ void cannyForHT( Mat& img, Rect rect ){
 
 void callHoughTransform( ){
     vector<Vec2f> lines;
-    HoughLines( temp, lines, 1, CV_PI/180, 100, 0, 0 );
+    HoughLines( dst, lines, 1, CV_PI/180, 100, 0, 0 );
     // temp nije output edge detectora, treba izmjeniti
     /*
     temp: Output of the edge detector. 
