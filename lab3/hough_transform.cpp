@@ -327,6 +327,8 @@ void callHoughTransform( ){
     theta = lines[0][1];
     // prebacivanje u k.s. slike
     rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
+    cout << "rho_roi = " << rho_roi << endl;
+    cout << "theta = " << theta << endl;
     
     // ucitavanje 
     FileStorage fs("calib/cam.xml", FileStorage::READ);
@@ -363,7 +365,16 @@ void callHoughTransform( ){
     cout << "B = " << B <<  endl;
 
     A = intrinsics * R;
-    cout << "A = " << A << endl;
+    //B = intrinsics * B;
 
+    cout << "A = " << A << endl;
+    cout << "A[0] = " << A.at<float>(0) << "A[1] = " << A.at<float>(1) << endl;
+
+    //float lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
+    //lambdaX = A.at<float>(0) * cos(theta) + A.at<float>(3) * sin(theta) - rho * (A.at<float>(6));
+    //lambdaY = A.at<float>(1) * cos(theta) + A.at<float>(4) * sin(theta) - rho * (A.at<float>(7));
+    //lambdaRo = rho * (B.at<float>(2)) - B.at<float>(0) * cos(theta) - B.at<float>(1) * sin(theta); 
+    //theta_crtano = atan2(lambdaY,lambdaX);
+    //rho_crtano = lambdaRo/sqrt(lambdaX*lambdaX + lambdaY*lambdaY);
 
 }
