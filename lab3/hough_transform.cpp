@@ -309,19 +309,7 @@ void callHoughTransform( ){
     vector<Vec2f> lines;
     HoughLines( dst, lines, 1, CV_PI/180, 100, 0, 0 );
     // temp nije output edge detectora, treba izmjeniti
-    /*
-    temp: Output of the edge detector. 
-    lines: A vector that will store the parameters (r,\theta) of the detected lines
-    */ 
-    // izvuci prvu linija, koja bi trebala vektor od dva elementa
-    // ro'' i theta
-    // prebacit ro u k.s. slike a ne ROI ro=ro'' +pt1.x*cos theta + 
-    //                                          +pt1.y*sin theta
-    // findExtrinsci, predat xml, vraca R koji treba konvertirit u 3*3 pogledi rodrigez, 
-    // pomonzit R i P(iz xml, camera matrix) jedanko A
-    // pomnozit t i P dobijemo B
-    // dobijemo lamde
-    //  
+    //cout << "Lines = " << Mat( lines ) << endl;
     float rho, rho_roi, theta;
     rho_roi= lines[0][0];
     theta = lines[0][1];
@@ -332,7 +320,6 @@ void callHoughTransform( ){
     
     // ucitavanje parametara kamere
     FileStorage fs("calib/cam.xml", FileStorage::READ);
-    cout << "procitao " << rho << " " << theta << endl;
     Mat intrinsics(3, 3, CV_32F ); 
     Mat distortion( 5, 1, CV_32F );
     fs["camera_matrix"] >> intrinsics; //3*3
@@ -372,7 +359,7 @@ void callHoughTransform( ){
     
     cout << "B = " << B <<  endl;
     cout << "A = " << endl << " " << A << endl << endl;
-    cout << "A[1] = " << B.at<double>(0,0) << " A[1] = " << A.at<double>(0,1) << endl;
+    cout << "A[1] = " << A.at<double>(0,0) << " A[1] = " << A.at<double>(0,1) << endl;
 
     double lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
     // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31
