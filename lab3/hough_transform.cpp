@@ -43,7 +43,7 @@ char ** global_argv;
 int match_method = 0;
 int lowThreshold;
 int ratio = 3;
-int const max_lowThreshold = 100;
+int const max_lowThreshold = 150;
 
 int main(int argc, char** argv) {
     help();
@@ -329,9 +329,9 @@ void callHoughTransform( ){
 
     vector<Point3f> objectPoints(4);
     objectPoints[0] = Point3f( 0, 0, 0 );
-    objectPoints[1] = Point3f( 0, 20, 0 );
-    objectPoints[2] = Point3f( 20, 0, 0 );
-    objectPoints[3] = Point3f( 20, 20, 0 );
+    objectPoints[1] = Point3f( 0, 250, 0 );
+    objectPoints[2] = Point3f( 190, 0, 0 );
+    objectPoints[3] = Point3f( 190, 250, 0 );
     //cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
     //cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
@@ -357,9 +357,9 @@ void callHoughTransform( ){
     A = intrinsics * R; // A = P * R
     B = intrinsics * tvec; // B = P * t
     
-    cout << "B = " << B <<  endl;
-    cout << "A = " << endl << " " << A << endl << endl;
-    cout << "A[1] = " << A.at<double>(0,0) << " A[1] = " << A.at<double>(0,1) << endl;
+    //cout << "B = " << B <<  endl;
+    //cout << "A = " << endl << " " << A << endl << endl;
+    //cout << "A[1] = " << A.at<double>(0,0) << " A[1] = " << A.at<double>(0,1) << endl;
 
     double lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
     // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31
@@ -372,7 +372,7 @@ void callHoughTransform( ){
     theta_crtano = atan2( lambdaY, lambdaX );
     rho_crtano = lambdaRo / sqrt( lambdaX * lambdaX + lambdaY * lambdaY );
 
-    cout << "Theta = " << theta_crtano << endl;
+    cout << "Theta = " << theta_crtano*180/CV_PI << endl;
     cout << "Rho = " << rho_crtano << endl;
 
 }
