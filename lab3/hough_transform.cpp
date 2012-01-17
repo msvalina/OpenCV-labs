@@ -43,7 +43,7 @@ char ** global_argv;
 int match_method = 0;
 int lowThreshold;
 int ratio = 3;
-int const max_lowThreshold = 100;
+int const max_lowThreshold = 150;
 
 int main(int argc, char** argv) {
     help();
@@ -195,7 +195,7 @@ void init_camera(){
         imshow( "camera", frame );
         char c = waitKey(10);
         switch( c ) {
-            case 'o':
+            case 'C':
                 camera = false;
                 cout << "???"<< endl;
                 break;
@@ -309,72 +309,70 @@ void callHoughTransform( ){
     vector<Vec2f> lines;
     HoughLines( dst, lines, 1, CV_PI/180, 100, 0, 0 );
     // temp nije output edge detectora, treba izmjeniti
-    /*
-    temp: Output of the edge detector. 
-    lines: A vector that will store the parameters (r,\theta) of the detected lines
-    */ 
-    // izvuci prvu linija, koja bi trebala vektor od dva elementa
-    // ro'' i theta
-    // prebacit ro u k.s. slike a ne ROI ro=ro'' +pt1.x*cos theta + 
-    //                                          +pt1.y*sin theta
-    // findExtrinsci, predat xml, vraca R koji treba konvertirit u 3*3 pogledi rodrigez, 
-    // pomonzit R i P(iz xml, camera matrix) jedanko A
-    // pomnozit t i P dobijemo B
-    // dobijemo lamde
-    //  
+    //cout << "Lines = " << Mat( lines ) << endl;
     float rho, rho_roi, theta;
     rho_roi= lines[0][0];
     theta = lines[0][1];
     // prebacivanje u k.s. slike
     rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
-    cout << "rho_roi = " << rho_roi << endl;
-    cout << "theta = " << theta << endl;
+    //cout << "rho_roi = " << rho_roi << endl;
+    //cout << "theta = " << theta << endl;
     
-    // ucitavanje 
+    // ucitavanje parametara kamere
     FileStorage fs("calib/cam.xml", FileStorage::READ);
-    cout << "procitao " << rho << " " << theta << endl;
-    Mat intrinsics, distortion;
+    Mat intrinsics(3, 3, CV_32F ); 
+    Mat distortion( 5, 1, CV_32F );
     fs["camera_matrix"] >> intrinsics; //3*3
     fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-    cout << "intrinsics = " << intrinsics <<  endl;
-    cout << "distortion = " << distortion <<  endl;
+    //cout << "intrinsics = " << intrinsics <<  endl;
+    //cout << "distortion = " << distortion <<  endl;
 
     vector<Point3f> objectPoints(4);
     objectPoints[0] = Point3f( 0, 0, 0 );
-    objectPoints[1] = Point3f( 0, 0, 0 );
-    objectPoints[2] = Point3f( 0, 0, 0 );
-    objectPoints[3] = Point3f( 0, 0, 0 );
-    cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
-    cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
+    objectPoints[1] = Point3f( 0, 250, 0 );
+    objectPoints[2] = Point3f( 190, 0, 0 );
+    objectPoints[3] = Point3f( 190, 250, 0 );
+    //cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
+    //cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
-    Mat rvec( 1, 3, CV_32FC1 );
-    Mat tvec( 1, 3, CV_32FC1 );
-    Mat R( 3, 3, CV_32FC1 );
-    Mat A( 3, 3, CV_32FC1 );
-    Mat B( 3, 1, CV_32FC1 );
+    Mat rvec( 1, 3, CV_32F );
+    Mat tvec( 1, 3, CV_32F );
+    Mat R( 3, 3, CV_32F );
+    Mat A( 3, 3, CV_32F );
+    Mat B( 3, 1, CV_32F );
 
     //cvFindExtrinsicCameraParams2() je zamjenjen s solvePnP()
     solvePnP( Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false );
-    cout << "rvec = " << rvec <<  endl;
+    // solvePnP mijenja Mat type u CV_32F te se elementima moram pristupat s .at<dobule>
+    //cout << "rvec = " << rvec <<  endl;
     cout << "tvec = " << tvec <<  endl;
     
     Rodrigues( rvec, R );
-    transpose( tvec, B );
+    //Mat t = tvec.t(); // transponirana matrica tvec 
+    //cout << "t = " << t << endl;
 
-    cout << "R = " << R <<  endl;
-    cout << "B = " << B <<  endl;
+    //cout << "R = " << R <<  endl;
+    //cout << "A = " << endl << " " << A << endl << endl;
 
-    A = intrinsics * R;
-    //B = intrinsics * B;
+    A = intrinsics * R; // A = P * R
+    B = intrinsics * tvec; // B = P * t
+    
+    //cout << "B = " << B <<  endl;
+    //cout << "A = " << endl << " " << A << endl << endl;
+    //cout << "A[1] = " << A.at<double>(0,0) << " A[1] = " << A.at<double>(0,1) << endl;
 
-    cout << "A = " << A << endl;
-    cout << "A[0] = " << A.at<float>(0) << "A[1] = " << A.at<float>(1) << endl;
+    double lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
+    // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31
+    lambdaX = A.at<double>(0,0) * cos(theta) + A.at<double>(1,0) * sin(theta) - rho * (A.at<double>(2,0));
+    // lambdaY = a12*cos(theta) + a22*sin(theta) - ro*a32
+    lambdaY = A.at<double>(0,1) * cos(theta) + A.at<double>(1,1) * sin(theta) - rho * (A.at<double>(2,1));
+    // lamdbaRo = b3*ro - b1*cos(theta) - b2*sin(theta) 
+    lambdaRo = rho * (B.at<double>(2)) - B.at<double>(0) * cos(theta) - B.at<double>(1) * sin(theta); 
 
-    //float lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
-    //lambdaX = A.at<float>(0) * cos(theta) + A.at<float>(3) * sin(theta) - rho * (A.at<float>(6));
-    //lambdaY = A.at<float>(1) * cos(theta) + A.at<float>(4) * sin(theta) - rho * (A.at<float>(7));
-    //lambdaRo = rho * (B.at<float>(2)) - B.at<float>(0) * cos(theta) - B.at<float>(1) * sin(theta); 
-    //theta_crtano = atan2(lambdaY,lambdaX);
-    //rho_crtano = lambdaRo/sqrt(lambdaX*lambdaX + lambdaY*lambdaY);
+    theta_crtano = atan2( lambdaY, lambdaX );
+    rho_crtano = lambdaRo / sqrt( lambdaX * lambdaX + lambdaY * lambdaY );
+
+    cout << "Theta = " << theta_crtano*180/CV_PI << endl;
+    cout << "Rho = " << rho_crtano << endl;
 
 }
