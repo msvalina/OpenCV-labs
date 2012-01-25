@@ -19,23 +19,23 @@ void help(){
 
 void cannyEdge( Mat& img, Rect rect );
 void cannyTreshold( int, void* );
-void init_camera();
+void initCamera( );
 void onMouse( int event, int x, int y, int flags, void* param );
-void draw_box( Mat& img, Rect rect );
-void crop_image( Mat& img, Rect rect );
-void match_template_on_crop( int match_method, Mat& templ );
+void drawBox( Mat& img, Rect rect );
+void cropImage( Mat& img, Rect rect );
+void matchTemplateTrackbar( );
+void matchTemplateOnCrop( int, void* );
 void getPoints( int event, int x, int y, int flags, void* param );
 void savePoint( int x, int y );
 void callHoughTransform( );
 
-Mat loaded_img, ss_img;
+Mat loaded_img, ss_img, cam_frame;
 Mat canny_roi, canny_gray, canny_detected_edges, canny_out; 
-Mat temp, frame;
-Mat templ, result, imgRoi;
+Mat croped_roi;
+Mat templ_img, result_img; 
 
 Point pt1, pt2, pt3, pt4;
 vector<Point2f> imagePoints(4);
-vector<Point2i> matrixsize(1);
 int n;
 Size2i size;
 Rect box, box2, box3;
@@ -45,6 +45,7 @@ int match_method = 0;
 int lowThreshold;
 int ratio = 3;
 int const max_lowThreshold = 150;
+int max_Trackbar = 5;
 
 int main(int argc, char** argv) {
     help();
@@ -83,24 +84,27 @@ int main(int argc, char** argv) {
                 cout << "Exiting ... \n ";
                 return 0;
             case 'e':
-                //canny_edge();
                 cannyEdge( loaded_img, box3 );
                 break;
             case 'E':
-                destroyWindow("canny edge");
+                destroyWindow("canny");
                 break;
             case 'r':
-                cout << "Setting callback, calling crop_image  ...\n";
+                cout << "Setting callback, calling cropImage  ...\n";
                 setMouseCallback( imageName, onMouse, (void*)&loaded_img );
                 break;
             case 'R':
                 destroyWindow( "ImgROI" );
                 break;
             case 'c':
-                init_camera();
+                initCamera( );
                 break;
             case 't':
-                match_template_on_crop( 2, imgRoi );
+                if(!croped_roi.data){
+                    cout << "nisi cropao nista" << endl;
+                    break;
+                }
+                matchTemplateTrackbar( );
                 break;
             case 'T':
                 destroyWindow( "source" );
@@ -119,6 +123,21 @@ int main(int argc, char** argv) {
     }
 
     return 0;
+}
+
+void cannyTreshold( int, void* ){
+    Canny( canny_gray, canny_detected_edges, lowThreshold, lowThreshold*ratio, 3 );
+    canny_out = Scalar::all(0);
+    canny_detected_edges.copyTo( canny_out, canny_detected_edges);
+    imshow( "canny", canny_out );
+}
+
+void cannyEdge( Mat& img, Rect rect ){
+    canny_roi = img( rect );
+    cvtColor( canny_roi, canny_gray, CV_RGB2GRAY);
+    namedWindow( "canny", CV_WINDOW_AUTOSIZE);
+    createTrackbar( "Min Treshold: ", "canny", &lowThreshold, max_lowThreshold, cannyTreshold );
+    cannyTreshold( 0, 0 );
 }
 
 void onMouse( int event, int x, int y, int flags, void* param ) {
@@ -149,45 +168,24 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
                 << "x\t y\t height\t width\n"
                 << box.x << "\t" << box.y << "\t" 
                 << box.height << "\t" << box.width << "\n";
-            crop_image( image, box);
-            draw_box( image, box );
+            cropImage( image, box);
+            drawBox( image, box );
             break;
     }
 } 
 
-void cannyTreshold( int, void* ){
-    Canny( canny_gray, canny_detected_edges, lowThreshold, lowThreshold*ratio, 3 );
-    canny_out = Scalar::all(0);
-    canny_detected_edges.copyTo( canny_out, canny_detected_edges);
-    imshow( "canny", canny_out );
-}
 
-void cannyEdge( Mat& img, Rect rect ){
-    canny_roi = img( rect );
-    cvtColor( canny_roi, canny_gray, CV_RGB2GRAY);
-    namedWindow( "canny", CV_WINDOW_AUTOSIZE);
-    createTrackbar( "Min Treshold: ", "canny", &lowThreshold, max_lowThreshold, cannyTreshold );
-    cannyTreshold( 0, 0 );
-}
-
-void draw_box( Mat& img, Rect rect ){
+void drawBox( Mat& img, Rect rect ){
     rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
 }
 
-void crop_image( Mat& img, Rect rect ){
-    imgRoi = img( rect );
-    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgROI", imgRoi );
-    /* 
-    gornji kod kopira samo header u imgRoi
-    ako treba kopirat i sliku moze se ovako:
-    imgRoi.copyTo(temp);
-    namedWindow( "temp", CV_WINDOW_AUTOSIZE );
-    imshow( "temp", temp );
-    */
+void cropImage( Mat& img, Rect rect ){
+    croped_roi = img( rect );
+    namedWindow( "croped", CV_WINDOW_AUTOSIZE );
+    imshow( "croped", croped_roi );
 }
 
-void init_camera(){
+void initCamera(){
     cout << "Starting camera mode... \n";
     VideoCapture cap(0);
     if( !cap.isOpened() ){
@@ -201,17 +199,17 @@ void init_camera(){
     }
     bool camera=true;
     while( camera ){
-        cap >> frame;
-        if(!frame.data) break;
+        cap >> cam_frame;
+        if(!cam_frame.data) break;
         namedWindow( "camera", CV_WINDOW_AUTOSIZE );
-        imshow( "camera", frame );
+        imshow( "camera", cam_frame );
         char c = waitKey(10);
         switch( c ) {
             case 'C':
                 camera = false;
                 break;
             case 's':
-                frame.copyTo( ss_img );
+                cam_frame.copyTo( ss_img );
                 namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
                 imshow( "snapshot", ss_img );
                 cout << " Setting MouseCallback getPoints " << endl;
@@ -221,27 +219,36 @@ void init_camera(){
     }
     destroyWindow("camera");
 }
+void matchTemplateTrackbar( ){
+    namedWindow( "source", CV_WINDOW_AUTOSIZE );
+    namedWindow( "result", CV_WINDOW_AUTOSIZE );
 
-void match_template_on_crop( int match_method, Mat& templ ){
-    /// Source image to display
-    Mat img_display;
-    loaded_img.copyTo( img_display );
+    char* trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    createTrackbar( trackbar_label, "source", &match_method, max_Trackbar, matchTemplateOnCrop );
+
+    matchTemplateOnCrop( 0, 0 );
+}
+
+void matchTemplateOnCrop( int, void* ){
+    Mat source_img;
+    loaded_img.copyTo( source_img );
+    croped_roi.copyTo( templ_img );
 
     /// Create the result matrix
-    int result_cols =  loaded_img.cols - templ.cols + 1;
-    int result_rows = loaded_img.rows - templ.rows + 1;   
+    int result_cols =  source_img.cols - templ_img.cols + 1;
+    int result_rows = source_img.rows - templ_img.rows + 1;   
 
-    result.create( result_cols, result_rows, CV_32FC1 );
+    result_img.create( result_cols, result_rows, CV_32FC1 );
 
     /// Do the Matching and Normalize
-    matchTemplate( loaded_img, templ, result, match_method );
-    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+    matchTemplate( source_img, templ_img, result_img, match_method );
+    normalize( result_img, result_img, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
     double minVal; double maxVal; Point minLoc; Point maxLoc;
     Point matchLoc;
 
-    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+    minMaxLoc( result_img, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
     if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
@@ -249,14 +256,11 @@ void match_template_on_crop( int match_method, Mat& templ ){
     else  
     { matchLoc = maxLoc; }
 
-    /// Show me what you got
-    rectangle( img_display, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
-    rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( source_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( result_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
 
-    namedWindow( "source", CV_WINDOW_AUTOSIZE );
-    namedWindow( "result", CV_WINDOW_AUTOSIZE );
-    imshow( "source", img_display );
-    imshow( "result", result );
+    imshow( "source", source_img );
+    imshow( "result", result_img );
 }
 
 void savePoint( int x, int y ){
