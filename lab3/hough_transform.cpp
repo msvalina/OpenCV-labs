@@ -6,7 +6,7 @@ using namespace cv;
 using namespace std;
 
 void help(){
-    cout << "This is Crative Commons work, do what you like... " << endl;
+    cout << "This code is in Public Domain, do what you like... " << endl;
     cout << "Usage: ./binary <image_name> " << endl;
     cout << "Hot keys: \n"
                 "\tr/R toggle croping \n"
@@ -17,33 +17,35 @@ void help(){
                 "\tt/T toggle template matching\n";
     }
 
-void canny_edge();
+void cannyEdge( Mat& img, Rect rect );
 void cannyTreshold( int, void* );
-void cannyTreshold2( int, void* );
-void init_camera();
+void initCamera( );
 void onMouse( int event, int x, int y, int flags, void* param );
-void draw_box( Mat& img, Rect rect );
-void crop_image( Mat& img, Rect rect );
-void match_template_on_crop( int match_method, Mat& templ );
+void drawBox( Mat& img, Rect rect );
+void cropImage( Mat& img, Rect rect );
+void matchTemplateTrackbar( );
+void matchTemplateOnCrop( int, void* );
 void getPoints( int event, int x, int y, int flags, void* param );
 void savePoint( int x, int y );
 void callHoughTransform( );
-void cannyForHT( Mat& img, Rect rect );
 
-Mat temp, mat_image, gray_image, frame, ss;
-Mat templ, result, imgRoi, imgRoi2;
-Mat dst, detected_edges;
+Mat loaded_img, ss_img, cam_frame;
+Mat canny_roi, canny_gray, canny_detected_edges, canny_out; 
+Mat croped_roi;
+Mat templ_img, result_img; 
 
 Point pt1, pt2, pt3, pt4;
 vector<Point2f> imagePoints(4);
 int n;
-Rect box, box2;
+Size2i size;
+Rect crop_box, canny_box, ss_box;
 bool drawing_box = false;
 char ** global_argv;
-int match_method = 0;
 int lowThreshold;
+int max_lowThreshold = 200;
 int ratio = 3;
-int const max_lowThreshold = 150;
+int max_Trackbar = 5;
+int match_method = 0;
 
 int main(int argc, char** argv) {
     help();
@@ -55,16 +57,25 @@ int main(int argc, char** argv) {
     }
 
     char* imageName = argv[1];
-    mat_image = imread( imageName, CV_LOAD_IMAGE_COLOR);
+    loaded_img = imread( imageName, CV_LOAD_IMAGE_COLOR);
  
-    if( !mat_image.data ) {
+    if( !loaded_img.data ) {
         cout << " Could not open or find the image" << endl;
         return -1;
     }
+    // dohvat width i height matrice
+    size = loaded_img.size();
+    //cout << size.width << " " << size.height << endl;
+
+    // postavljanje ROI na cijelu sliku
+    canny_box.x = 0;
+    canny_box.y = 0;
+    canny_box.width = size.width;
+    canny_box.height = size.height;
 
     while ( 1 ){
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
-        imshow( imageName, mat_image );
+        imshow( imageName, loaded_img);
 
         char c = waitKey(10);
         switch( c )
@@ -73,23 +84,27 @@ int main(int argc, char** argv) {
                 cout << "Exiting ... \n ";
                 return 0;
             case 'e':
-                canny_edge();
+                cannyEdge( loaded_img, canny_box );
                 break;
             case 'E':
-                destroyWindow("canny edge");
+                destroyWindow("canny");
                 break;
             case 'r':
-                cout << "Setting callback, calling crop_image  ...\n";
-                setMouseCallback( imageName, onMouse, (void*)&mat_image );
+                cout << "Setting callback, calling cropImage  ...\n";
+                setMouseCallback( imageName, onMouse, (void*)&loaded_img );
                 break;
             case 'R':
-                destroyWindow( "ImgROI" );
+                destroyWindow( "croped" );
                 break;
             case 'c':
-                init_camera();
+                initCamera( );
                 break;
             case 't':
-                match_template_on_crop( 2, imgRoi );
+                if(!croped_roi.data){
+                    cout << "nisi cropao nista" << endl;
+                    break;
+                }
+                matchTemplateTrackbar( );
                 break;
             case 'T':
                 destroyWindow( "source" );
@@ -99,10 +114,13 @@ int main(int argc, char** argv) {
                 destroyWindow( "snapshot" );
                 break;
             case 'h':
-                cannyForHT( ss, box2 );
-                //callHoughTransform( ss, box2 );
+                cannyEdge( ss_img, ss_box );
                 break;
-            case 'p':
+            case 'H':
+                if(!canny_out.data){
+                    cout << "pozivi canny" << endl;
+                    break;
+                }
                 callHoughTransform( );
                 break;
         }
@@ -111,76 +129,71 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+void cannyTreshold( int, void* ){
+    Canny( canny_gray, canny_detected_edges, lowThreshold, lowThreshold*ratio, 3 );
+    canny_out = Scalar::all(0);
+    canny_detected_edges.copyTo( canny_out );
+    imshow( "canny", canny_out );
+}
+
+void cannyEdge( Mat& img, Rect rect ){
+    canny_roi = img( rect );
+    cvtColor( canny_roi, canny_gray, CV_RGB2GRAY);
+    namedWindow( "canny", CV_WINDOW_AUTOSIZE);
+    createTrackbar( "Min Treshold: ", "canny", &lowThreshold, max_lowThreshold, cannyTreshold );
+    cannyTreshold( 0, 0 );
+}
+
 void onMouse( int event, int x, int y, int flags, void* param ) {
     Mat& image = *(Mat*) param;
     switch( event )
     {
         case CV_EVENT_LBUTTONDOWN:
             drawing_box = true;
-            box = Rect(x, y, 0, 0);
+            crop_box = Rect(x, y, 0, 0);
             break;
         case CV_EVENT_MOUSEMOVE: 
             if( drawing_box ) {
-                box.width = x-box.x;
-                box.height = y-box.y;
+                crop_box.width = x-crop_box.x;
+                crop_box.height = y-crop_box.y;
             }
             break;
         case CV_EVENT_LBUTTONUP: 
             drawing_box = false;
-            if( box.width<0 ) {
-                box.x+=box.width;
-                box.width *= -1;
+            if( crop_box.width<0 ) {
+                crop_box.x+=crop_box.width;
+                crop_box.width *= -1;
             }
-            if( box.height<0 ) {
-                box.y+=box.height;
-                box.height*=-1;
+            if( crop_box.height<0 ) {
+                crop_box.y+=crop_box.height;
+                crop_box.height*=-1;
             }
             cout << "box coordinates \n" 
                 << "x\t y\t height\t width\n"
-                << box.x << "\t" << box.y << "\t" 
-                << box.height << "\t" << box.width << "\n";
-            crop_image( image, box);
-            draw_box( image, box );
+                << crop_box.x << "\t" << crop_box.y << "\t" 
+                << crop_box.height << "\t" << crop_box.width << "\n";
+            cropImage( image, crop_box);
+            //drawBox( image, box );
             break;
     }
 } 
 
-void draw_box( Mat& img, Rect rect ){
+void drawBox( Mat& img, Rect rect ){
     rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
 }
 
-void crop_image( Mat& img, Rect rect ){
-    imgRoi = img( rect );
-    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
-    imshow( "ImgROI", imgRoi );
-    /* gornji kod kopira samo header u imgRoi
-     * ako treba kopirat i sliku moze se ovako:
-    imgRoi.copyTo(temp);
-    namedWindow( "temp", CV_WINDOW_AUTOSIZE );
-    imshow( "temp", temp );
-    */
+void cropImage( Mat& img, Rect rect ){
+    croped_roi = img( rect );
+    namedWindow( "croped", CV_WINDOW_AUTOSIZE );
+    imshow( "croped", croped_roi );
 }
 
-void canny_edge(){
-    cout << "calling canny... \n";
-    cvtColor( mat_image, gray_image, CV_RGB2GRAY);
-    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE);
-    createTrackbar( "Min Treshold: ", "canny edge", &lowThreshold, max_lowThreshold, cannyTreshold );
-}
-
-void cannyTreshold( int, void* ){
-    Canny( gray_image, detected_edges, lowThreshold, lowThreshold*ratio, 3 );
-    dst = Scalar::all(0);
-    gray_image.copyTo( dst, detected_edges);
-    imshow( "canny edge", dst);
-}
-
-void init_camera(){
+void initCamera( ){
     cout << "Starting camera mode... \n";
     VideoCapture cap(0);
     if( !cap.isOpened() ){
         cerr << "fail preko default camere \n";
-        cout << "isprobavam argv2 " 
+        cout << "isprobavam argv[2] " 
             << global_argv[2] << endl;
         cap.open( global_argv[2] );
         if( !cap.isOpened() ){
@@ -189,20 +202,19 @@ void init_camera(){
     }
     bool camera=true;
     while( camera ){
-        cap >> frame;
-        if(!frame.data) break;
+        cap >> cam_frame;
+        if(!cam_frame.data) break;
         namedWindow( "camera", CV_WINDOW_AUTOSIZE );
-        imshow( "camera", frame );
+        imshow( "camera", cam_frame );
         char c = waitKey(10);
         switch( c ) {
             case 'o':
                 camera = false;
-                cout << "???"<< endl;
                 break;
             case 's':
-                frame.copyTo( ss );
+                cam_frame.copyTo( ss_img );
                 namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
-                imshow( "snapshot", ss );
+                imshow( "snapshot", ss_img );
                 cout << " Setting MouseCallback getPoints " << endl;
                 setMouseCallback( "snapshot", getPoints, 0 );
                 break;
@@ -210,27 +222,36 @@ void init_camera(){
     }
     destroyWindow("camera");
 }
+void matchTemplateTrackbar( ){
+    namedWindow( "source", CV_WINDOW_AUTOSIZE );
+    namedWindow( "result", CV_WINDOW_AUTOSIZE );
 
-void match_template_on_crop( int match_method, Mat& templ ){
-    /// Source image to display
-    Mat img_display;
-    mat_image.copyTo( img_display );
+    char* trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    createTrackbar( trackbar_label, "source", &match_method, max_Trackbar, matchTemplateOnCrop );
+
+    matchTemplateOnCrop( 0, 0 );
+}
+
+void matchTemplateOnCrop( int, void* ){
+    Mat source_img;
+    loaded_img.copyTo( source_img );
+    croped_roi.copyTo( templ_img );
 
     /// Create the result matrix
-    int result_cols =  mat_image.cols - templ.cols + 1;
-    int result_rows = mat_image.rows - templ.rows + 1;   
+    int result_cols =  loaded_img.cols - templ_img.cols + 1;
+    int result_rows = loaded_img.rows - templ_img.rows + 1;   
 
-    result.create( result_cols, result_rows, CV_32FC1 );
+    result_img.create( result_cols, result_rows, CV_32FC1 );
 
     /// Do the Matching and Normalize
-    matchTemplate( mat_image, templ, result, match_method );
-    normalize( result, result, 0, 1, NORM_MINMAX, -1, Mat() );
+    matchTemplate( loaded_img, templ_img, result_img, match_method );
+    normalize( result_img, result_img, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
     double minVal; double maxVal; Point minLoc; Point maxLoc;
     Point matchLoc;
 
-    minMaxLoc( result, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
+    minMaxLoc( result_img, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
 
     /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
     if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
@@ -238,14 +259,11 @@ void match_template_on_crop( int match_method, Mat& templ ){
     else  
     { matchLoc = maxLoc; }
 
-    /// Show me what you got
-    rectangle( img_display, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
-    rectangle( result, matchLoc, Point( matchLoc.x + templ.cols , matchLoc.y + templ.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( source_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( result_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(1), 2, 8, 0 ); 
 
-    namedWindow( "source", CV_WINDOW_AUTOSIZE );
-    namedWindow( "result", CV_WINDOW_AUTOSIZE );
-    imshow( "source", img_display );
-    imshow( "result", result );
+    imshow( "source", source_img );
+    imshow( "result", result_img );
 }
 
 void savePoint( int x, int y ){
@@ -257,27 +275,23 @@ void savePoint( int x, int y ){
         cout << pt1.x << " " << pt1.y << endl;
     }
     if ( n == 2 ){ 
-        pt2.x = x;
-        pt2.y = y;
         imagePoints[1] = Point2f( x, y );
-        cout << pt2.x << " " << pt2.y << endl;
+        cout << x << " " << y << endl;
     }
     if ( n == 3 ){ 
-        pt3.x = x;
-        pt3.y = y;
         imagePoints[2] = Point2f( x, y );
-        cout << pt3.x << " " << pt3.y << endl;
+        cout << x << " " << y << endl;
     }
     if ( n == 4 ){ 
         pt4.x = x;
         pt4.y = y;
         imagePoints[3] = Point2f( x, y );
-        box2.x = pt1.x;
-        box2.y = pt1.y;
-        box2.width = pt4.x - box2.x;
-        box2.height = pt4.y - box2.y;
+        ss_box.x = pt1.x;
+        ss_box.y = pt1.y;
+        ss_box.width = pt4.x - ss_box.x;
+        ss_box.height = pt4.y - ss_box.y;
         cout << pt4.x << " " << pt4.y << endl;
-        cout << box2.width << " " << box2.height << endl;
+        cout << ss_box.width << " " << ss_box.height << endl;
     }
 }
 
@@ -290,33 +304,18 @@ void getPoints( int event, int x, int y, int flags, void* param ) {
                 break;
          }
 }
-void cannyTreshold2( int, void* ){
-    Canny( temp, detected_edges, lowThreshold, lowThreshold*ratio, 3 );
-    dst = Scalar::all(0);
-    temp.copyTo( dst, detected_edges);
-    imshow( "imageRoi2", dst);
-}
-
-void cannyForHT( Mat& img, Rect rect ){
-    imgRoi2 = img( rect );
-    cvtColor( imgRoi2, temp, CV_RGB2GRAY);
-    namedWindow( "imageRoi2", CV_WINDOW_AUTOSIZE);
-    createTrackbar( "Min Treshold: ", "imageRoi2", &lowThreshold, max_lowThreshold, cannyTreshold2 );
-}
-
 
 void callHoughTransform( ){
     vector<Vec2f> lines;
-    HoughLines( dst, lines, 1, CV_PI/180, 100, 0, 0 );
-    // temp nije output edge detectora, treba izmjeniti
-    //cout << "Lines = " << Mat( lines ) << endl;
+    HoughLines( canny_out, lines, 1, CV_PI/180, 100, 0, 0 );
+    cout << "Lines = " << Mat( lines ) << endl;
     float rho, rho_roi, theta;
     rho_roi= lines[0][0];
     theta = lines[0][1];
     // prebacivanje u k.s. slike
     rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
-    //cout << "rho_roi = " << rho_roi << endl;
-    //cout << "theta = " << theta << endl;
+    cout << "rho_roi = " << rho_roi << endl;
+    cout << "theta = " << theta << endl;
     
     // ucitavanje parametara kamere
     FileStorage fs("calib/cam.xml", FileStorage::READ);
@@ -324,16 +323,16 @@ void callHoughTransform( ){
     Mat distortion( 5, 1, CV_32F );
     fs["camera_matrix"] >> intrinsics; //3*3
     fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-    //cout << "intrinsics = " << intrinsics <<  endl;
-    //cout << "distortion = " << distortion <<  endl;
+    cout << "intrinsics = " << intrinsics <<  endl;
+    cout << "distortion = " << distortion <<  endl;
 
     vector<Point3f> objectPoints(4);
     objectPoints[0] = Point3f( 0, 0, 0 );
     objectPoints[1] = Point3f( 0, 250, 0 );
     objectPoints[2] = Point3f( 190, 0, 0 );
     objectPoints[3] = Point3f( 190, 250, 0 );
-    //cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
-    //cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
+    cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
+    cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
     Mat rvec( 1, 3, CV_32F );
     Mat tvec( 1, 3, CV_32F );
@@ -376,3 +375,4 @@ void callHoughTransform( ){
     cout << "Rho = " << rho_crtano << endl;
 
 }
+
