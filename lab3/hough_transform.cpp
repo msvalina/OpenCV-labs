@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
                 cannyForHT( ss, box2 );
                 //callHoughTransform( ss, box2 );
                 break;
-            case 'H':
+            case 'p':
                 callHoughTransform( );
                 break;
         }
@@ -195,7 +195,7 @@ void init_camera(){
         imshow( "camera", frame );
         char c = waitKey(10);
         switch( c ) {
-            case 'C':
+            case 'o':
                 camera = false;
                 cout << "???"<< endl;
                 break;
