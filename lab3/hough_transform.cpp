@@ -38,14 +38,14 @@ Point pt1, pt2, pt3, pt4;
 vector<Point2f> imagePoints(4);
 int n;
 Size2i size;
-Rect box, box2, box3;
+Rect crop_box, canny_box, ss_box;
 bool drawing_box = false;
 char ** global_argv;
-int match_method = 0;
 int lowThreshold;
+int max_lowThreshold = 200;
 int ratio = 3;
-int const max_lowThreshold = 150;
 int max_Trackbar = 5;
+int match_method = 0;
 
 int main(int argc, char** argv) {
     help();
@@ -68,10 +68,10 @@ int main(int argc, char** argv) {
     //cout << size.width << " " << size.height << endl;
 
     // postavljanje ROI na cijelu sliku
-    box3.x = 0;
-    box3.y = 0;
-    box3.width = size.width;
-    box3.height = size.height;
+    canny_box.x = 0;
+    canny_box.y = 0;
+    canny_box.width = size.width;
+    canny_box.height = size.height;
 
     while ( 1 ){
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
                 cout << "Exiting ... \n ";
                 return 0;
             case 'e':
-                cannyEdge( loaded_img, box3 );
+                cannyEdge( loaded_img, canny_box );
                 break;
             case 'E':
                 destroyWindow("canny");
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
                 setMouseCallback( imageName, onMouse, (void*)&loaded_img );
                 break;
             case 'R':
-                destroyWindow( "ImgROI" );
+                destroyWindow( "croped" );
                 break;
             case 'c':
                 initCamera( );
@@ -114,9 +114,13 @@ int main(int argc, char** argv) {
                 destroyWindow( "snapshot" );
                 break;
             case 'h':
-                cannyEdge( ss_img, box2 );
+                cannyEdge( ss_img, ss_box );
                 break;
             case 'H':
+                if(!canny_out.data){
+                    cout << "pozivi canny" << endl;
+                    break;
+                }
                 callHoughTransform( );
                 break;
         }
@@ -128,7 +132,7 @@ int main(int argc, char** argv) {
 void cannyTreshold( int, void* ){
     Canny( canny_gray, canny_detected_edges, lowThreshold, lowThreshold*ratio, 3 );
     canny_out = Scalar::all(0);
-    canny_detected_edges.copyTo( canny_out, canny_detected_edges);
+    canny_detected_edges.copyTo( canny_out );
     imshow( "canny", canny_out );
 }
 
@@ -146,34 +150,33 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
     {
         case CV_EVENT_LBUTTONDOWN:
             drawing_box = true;
-            box = Rect(x, y, 0, 0);
+            crop_box = Rect(x, y, 0, 0);
             break;
         case CV_EVENT_MOUSEMOVE: 
             if( drawing_box ) {
-                box.width = x-box.x;
-                box.height = y-box.y;
+                crop_box.width = x-crop_box.x;
+                crop_box.height = y-crop_box.y;
             }
             break;
         case CV_EVENT_LBUTTONUP: 
             drawing_box = false;
-            if( box.width<0 ) {
-                box.x+=box.width;
-                box.width *= -1;
+            if( crop_box.width<0 ) {
+                crop_box.x+=crop_box.width;
+                crop_box.width *= -1;
             }
-            if( box.height<0 ) {
-                box.y+=box.height;
-                box.height*=-1;
+            if( crop_box.height<0 ) {
+                crop_box.y+=crop_box.height;
+                crop_box.height*=-1;
             }
             cout << "box coordinates \n" 
                 << "x\t y\t height\t width\n"
-                << box.x << "\t" << box.y << "\t" 
-                << box.height << "\t" << box.width << "\n";
-            cropImage( image, box);
-            drawBox( image, box );
+                << crop_box.x << "\t" << crop_box.y << "\t" 
+                << crop_box.height << "\t" << crop_box.width << "\n";
+            cropImage( image, crop_box);
+            //drawBox( image, box );
             break;
     }
 } 
-
 
 void drawBox( Mat& img, Rect rect ){
     rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
@@ -185,7 +188,7 @@ void cropImage( Mat& img, Rect rect ){
     imshow( "croped", croped_roi );
 }
 
-void initCamera(){
+void initCamera( ){
     cout << "Starting camera mode... \n";
     VideoCapture cap(0);
     if( !cap.isOpened() ){
@@ -235,13 +238,13 @@ void matchTemplateOnCrop( int, void* ){
     croped_roi.copyTo( templ_img );
 
     /// Create the result matrix
-    int result_cols =  source_img.cols - templ_img.cols + 1;
-    int result_rows = source_img.rows - templ_img.rows + 1;   
+    int result_cols =  loaded_img.cols - templ_img.cols + 1;
+    int result_rows = loaded_img.rows - templ_img.rows + 1;   
 
     result_img.create( result_cols, result_rows, CV_32FC1 );
 
     /// Do the Matching and Normalize
-    matchTemplate( source_img, templ_img, result_img, match_method );
+    matchTemplate( loaded_img, templ_img, result_img, match_method );
     normalize( result_img, result_img, 0, 1, NORM_MINMAX, -1, Mat() );
 
     /// Localizing the best match with minMaxLoc
@@ -257,7 +260,7 @@ void matchTemplateOnCrop( int, void* ){
     { matchLoc = maxLoc; }
 
     rectangle( source_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
-    rectangle( result_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
+    rectangle( result_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(1), 2, 8, 0 ); 
 
     imshow( "source", source_img );
     imshow( "result", result_img );
@@ -272,27 +275,23 @@ void savePoint( int x, int y ){
         cout << pt1.x << " " << pt1.y << endl;
     }
     if ( n == 2 ){ 
-        pt2.x = x;
-        pt2.y = y;
         imagePoints[1] = Point2f( x, y );
-        cout << pt2.x << " " << pt2.y << endl;
+        cout << x << " " << y << endl;
     }
     if ( n == 3 ){ 
-        pt3.x = x;
-        pt3.y = y;
         imagePoints[2] = Point2f( x, y );
-        cout << pt3.x << " " << pt3.y << endl;
+        cout << x << " " << y << endl;
     }
     if ( n == 4 ){ 
         pt4.x = x;
         pt4.y = y;
         imagePoints[3] = Point2f( x, y );
-        box2.x = pt1.x;
-        box2.y = pt1.y;
-        box2.width = pt4.x - box2.x;
-        box2.height = pt4.y - box2.y;
+        ss_box.x = pt1.x;
+        ss_box.y = pt1.y;
+        ss_box.width = pt4.x - ss_box.x;
+        ss_box.height = pt4.y - ss_box.y;
         cout << pt4.x << " " << pt4.y << endl;
-        cout << box2.width << " " << box2.height << endl;
+        cout << ss_box.width << " " << ss_box.height << endl;
     }
 }
 
@@ -309,15 +308,14 @@ void getPoints( int event, int x, int y, int flags, void* param ) {
 void callHoughTransform( ){
     vector<Vec2f> lines;
     HoughLines( canny_out, lines, 1, CV_PI/180, 100, 0, 0 );
-    // temp nije output edge detectora, treba izmjeniti
-    //cout << "Lines = " << Mat( lines ) << endl;
+    cout << "Lines = " << Mat( lines ) << endl;
     float rho, rho_roi, theta;
     rho_roi= lines[0][0];
     theta = lines[0][1];
     // prebacivanje u k.s. slike
     rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
-    //cout << "rho_roi = " << rho_roi << endl;
-    //cout << "theta = " << theta << endl;
+    cout << "rho_roi = " << rho_roi << endl;
+    cout << "theta = " << theta << endl;
     
     // ucitavanje parametara kamere
     FileStorage fs("calib/cam.xml", FileStorage::READ);
@@ -325,16 +323,16 @@ void callHoughTransform( ){
     Mat distortion( 5, 1, CV_32F );
     fs["camera_matrix"] >> intrinsics; //3*3
     fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-    //cout << "intrinsics = " << intrinsics <<  endl;
-    //cout << "distortion = " << distortion <<  endl;
+    cout << "intrinsics = " << intrinsics <<  endl;
+    cout << "distortion = " << distortion <<  endl;
 
     vector<Point3f> objectPoints(4);
     objectPoints[0] = Point3f( 0, 0, 0 );
     objectPoints[1] = Point3f( 0, 250, 0 );
     objectPoints[2] = Point3f( 190, 0, 0 );
     objectPoints[3] = Point3f( 190, 250, 0 );
-    //cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
-    //cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
+    cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
+    cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
     Mat rvec( 1, 3, CV_32F );
     Mat tvec( 1, 3, CV_32F );
@@ -377,3 +375,4 @@ void callHoughTransform( ){
     cout << "Rho = " << rho_crtano << endl;
 
 }
+
