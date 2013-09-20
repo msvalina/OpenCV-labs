@@ -1,5 +1,6 @@
 #include <cv.h>
-#include <highgui.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/nonfree/features2d.hpp"
 #include <iostream>
 
 using namespace cv;
