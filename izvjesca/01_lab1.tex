@@ -1,13 +1,14 @@
 \setcounter{figure}{0}
 \section{Vježba 1: Uvod u OpenCV i podešavanje radne okoline}
 
-\textbf{Cilj vježbe:}\\
-Upoznati se s bibliotekom OpenCV. Napisati jednostavan program za
-određivanje rubova na slici pomoću \emph{Canny-evog} detektora
-rubova. Podesiti i proučiti alate za prevođenje i izvršavanje izvornog
-koda.\\
+\subsection{Cilj vježbe}
+Upoznati se s bibliotekom OpenCV. Podesiti i proučiti alate 
+za prevođenje i izvršavanje izvornog koda. Napisati jednostavan 
+program za određivanje rubova na slici pomoću \emph{Canny-evog}
+detektora rubova. Proširiti program funkcijom rezanja slike
+i dodati mogućnosti učitavnja videa.\\
 
-\subsection{OpenCV}
+\subsection{Kratak info o OpenCV-u}
 
 OpenCV \emph{(Open Source Computer Vision Library)}
 je biblioteka C i C++ funkcija koje se često upotrebljavaju u računalnom vidu. 
@@ -25,8 +26,8 @@ platformama. Fokusira se na obradu slike u stvarnom vremenu.
   \item[Ostalo:] pkg-config 0.26
 \end{description}
 
-Ubuntu 12.04 je izabran zbog stabilnosti, jednostavnog podesavanja i 
-dostupnosti velike količine vec priprmljenih programskih paketa.
+Ubuntu 12.04 je izabran zbog stabilnosti, jednostavnog podešavanja i 
+dostupnosti velike količine već priprmljenih programskih paketa.
 OpenCV 2.4.6 je zadnja stabilna verzija u trenutnku pisanja. Odabrana
 je jer se razvoj aplikacija odrađivao na više računala s različitim 
 GNU/Linux distribucijama te zbog dostupnosti najnovih funkicija.
@@ -35,13 +36,53 @@ pkg-config alat je korišten jer on automatski izlista potrebne
 opencv biblioteke i datoteke zaglavlja prevodiocu. 
 \\
 
-
-\begin{lstlisting}[language=bash,caption={Pokretanje prevodioca iz terminala}]
-$ g++ ime_datoteke.cpp -o program `pkg-config --cflags --libs opencv`
+\begin{lstlisting}[language=bash,caption={Pokretanje prevodioca iz
+    komandne linije}]
+$ g++ edge_crop_video.cpp -o edge_crop_video `pkg-config --cflags --libs opencv`
 \end{lstlisting}
 
 \newpage
-\subsection{Izlistanje koda}
+\subsection{Objašnjenje programa}
 
+\subsubsection{Kontrola programa}
+
+Prilikom pokretanja programa iz komandne linije potrebno je 
+predati programu putanju do slike (argv[1]) u protivnom se program 
+nece pokrenuti. \\
+
+\begin{lstlisting}[language=bash,caption={Pokretanje programa iz
+    komandne linije}]
+$ ./edge_crop_video ../images/lena_color_512.tif
+\end{lstlisting}
+
+Nakon pokretanja program se kontrolira tipkovnicom, ovisno o
+pritisku tipke poziva se odgovarajuća funkcija. To je izvedeno 
+putem beskonačne petlje i čekanja na pritisak tipke. 
+\\
+
+\begin{lstlisting}[language=C,caption={Kontrola programa tipkovnicom}]
+while ( 1 ){
+    char c = waitKey(10);
+    switch( c ) {
+        case 27:
+            cout << "Exiting ... \n ";
+            return 0;
+        case 'e':
+            cannyEdge( loaded_img, canny_box );
+            break;
+        case 'r':
+            cout << "Setting callback, calling cropImage  ...\n";
+            setMouseCallback( imageName, onMouse, (void*)&loaded_img );
+            break;
+        case 'c':
+            initCamera( );
+            break; 
+            }
+        }
+\end{lstlisting}
+
+\subsubsection{Detekcija rubova}
+\subsubsection{Rezanje slike}
+\subsubsection{Učitavanje videa}
 % \lstinputlisting{$HOME/OpenCV-labs/lab1/edge_crop_video.cpp}
 
