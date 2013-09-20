@@ -1,0 +1,47 @@
+\setcounter{figure}{0}
+\section{Vježba 1: Uvod u OpenCV i podešavanje radne okoline}
+
+\textbf{Cilj vježbe:}\\
+Upoznati se s bibliotekom OpenCV. Napisati jednostavan program za
+određivanje rubova na slici pomoću \emph{Canny-evog} detektora
+rubova. Podesiti i proučiti alate za prevođenje i izvršavanje izvornog
+koda.\\
+
+\subsection{OpenCV}
+
+OpenCV \emph{(Open Source Computer Vision Library)}
+je biblioteka C i C++ funkcija koje se često upotrebljavaju u računalnom vidu. 
+Početno razvijena od strane \emph{Intel-a}, a trenutno ju 
+održavaju \emph{Willow Garage} i \emph{Itseez}.
+Slobodna je za upotrebu pod uvijetima BSD licence. Biblioteka se izvodi na svim većim 
+platformama. Fokusira se na obradu slike u stvarnom vremenu.
+
+\subsection{Radna okolina}
+
+\begin{description}
+  \item[OS:] Ubuntu 12.04
+  \item[Biblioteka:] OpenCV 2.4.6
+  \item[Prevodioc:] GCC 4.6.3 
+  \item[Ostalo:] pkg-config 0.26
+\end{description}
+
+Ubuntu 12.04 je izabran zbog stabilnosti, jednostavnog podesavanja i 
+dostupnosti velike količine vec priprmljenih programskih paketa.
+OpenCV 2.4.6 je zadnja stabilna verzija u trenutnku pisanja. Odabrana
+je jer se razvoj aplikacija odrađivao na više računala s različitim 
+GNU/Linux distribucijama te zbog dostupnosti najnovih funkicija.
+GCC 4.6.3 je zadna verzija koja dolazi s Ubuntu 12.04 distribucijom.
+pkg-config alat je korišten jer on automatski izlista potrebne
+opencv biblioteke i datoteke zaglavlja prevodiocu. 
+\\
+
+
+\begin{lstlisting}[language=bash,caption={Pokretanje prevodioca iz terminala}]
+$ g++ ime_datoteke.cpp -o program `pkg-config --cflags --libs opencv`
+\end{lstlisting}
+
+\newpage
+\subsection{Izlistanje koda}
+
+% \lstinputlisting{$HOME/OpenCV-labs/lab1/edge_crop_video.cpp}
+
