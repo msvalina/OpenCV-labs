@@ -50,8 +50,8 @@ int main(int argc, char** argv) {
         namedWindow( imageName, CV_WINDOW_AUTOSIZE );
         imshow( imageName, mat_image );
 
-        int c = waitKey(15);
-        switch( (char)c )
+        char c = waitKey(10);
+        switch( c )
         {
             case 27:
                 cout << "Exiting ... \n ";
@@ -111,7 +111,7 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
                 << "x\t y\t height\t width\n"
                 << box.x << "\t" << box.y << "\t" 
                 << box.height << "\t" << box.width << "\n";
-            //draw_box( image, box );
+            draw_box( image, box );
             crop_image( image, box);
             break;
     }
