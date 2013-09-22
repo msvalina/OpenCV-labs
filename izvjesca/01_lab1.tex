@@ -2,20 +2,20 @@
 \section{Vježba 1: Uvod u OpenCV i podešavanje radne okoline}
 
 \subsection{Cilj vježbe}
-Upoznati se s bibliotekom OpenCV. Podesiti i proučiti alate 
-za prevođenje i izvršavanje izvornog koda. Napisati jednostavan 
-program za određivanje rubova na slici pomoću \emph{Canny-evog}
-detektora rubova. Proširiti program funkcijom rezanja slike
-i dodati mogućnosti učitavnja videa.\\
+Upoznati se s bibliotekom OpenCV. Podesiti i proučiti alate za
+prevođenje i izvršavanje izvornog koda. Napisati jednostavan program za
+određivanje rubova na slici pomoću \emph{Canny-evog} detektora rubova.
+Proširiti program funkcijom rezanja slike i dodati mogućnosti učitavnja
+videa.\\
 
 \subsection{Kratak info o OpenCV-u}
 
-OpenCV \emph{(Open Source Computer Vision Library)}
-je biblioteka C i C++ funkcija koje se često upotrebljavaju u računalnom vidu. 
-Početno razvijena od strane \emph{Intel-a}, a trenutno ju 
-održavaju \emph{Willow Garage} i \emph{Itseez}.
-Slobodna je za upotrebu pod uvijetima BSD licence. Biblioteka se izvodi na svim većim 
-platformama. Fokusira se na obradu slike u stvarnom vremenu.
+OpenCV (\emph{Open Source Computer Vision Library})je biblioteka C i C++
+funkcija koje se često upotrebljavaju u računalnom vidu. Početno
+razvijena od strane Intel-a, a trenutno ju održavaju Willow Garage i
+Itseez.  Slobodna je za upotrebu pod uvijetima BSD licence. Biblioteka
+se izvodi na svim većim platformama. Fokusira se na obradu slike u
+stvarnom vremenu.
 
 \subsection{Radna okolina}
 
@@ -61,18 +61,18 @@ putem beskonačne petlje i čekanja na pritisak tipke.
 \\
 
 \begin{lstlisting}[language=C,caption={Kontrola programa tipkovnicom}]
-while ( 1 ){
+while (1){
     char c = waitKey(10);
-    switch( c ) {
+    switch(c) {
         case 27:
             cout << "Exiting ... \n ";
             return 0;
         case 'e':
-            cannyEdge( loaded_img, canny_box );
+            cannyEdge(loaded_img, canny_box);
             break;
         case 'r':
             cout << "Setting callback, calling cropImage  ...\n";
-            setMouseCallback( imageName, onMouse, (void*)&loaded_img );
+            setMouseCallback(imageName, onMouse, (void*)&loaded_img);
             break;
         case 'c':
             initCamera( );
@@ -81,8 +81,145 @@ while ( 1 ){
         }
 \end{lstlisting}
 
+\newpage
 \subsubsection{Detekcija rubova}
+
+Rubove detektiramo pritiskom na tipku \textbf{``e''}  koja poziva funkciju
+\textit{cannyEdge}. Sama funkcija prije poziva odradi pretvorbu slike u boji
+u sliku sivih tonova. Nakon toga se poziva funkcija \textit{cv::Canny} 
+u kojoj je implementiran Canny-ev operator i algoritam za detekciju
+rubova.
+\\
+
+\begin{lstlisting}[language=C,caption={Detekcija rubova}]
+void canny_edge(){
+    cout << "Calling canny... \n";
+    Mat gray_image;
+    cvtColor( mat_image, gray_image, CV_RGB2GRAY );
+    Canny( gray_image, gray_image, 50, 100, 3 );
+    namedWindow( "canny edge", CV_WINDOW_AUTOSIZE );
+    imshow( "canny edge", gray_image );
+}
+\end{lstlisting}
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.4]{images/lab1-01-edge.png}
+\caption{Detekcija rubova}
+\label{fig:lab1-01-edge}
+\end{figure}
+
+\newpage
 \subsubsection{Rezanje slike}
+Rezanje slike (engl. \textit{cropping}) je implementirano kroz poziv par
+funkcija. Pritiskom na tipku \textbf{``r''} postavlja se
+\textit{setMouseCallback} (funkcija koja konstantno poziva drugu
+funkciju u slučaju micanja miša ili pritiska tipke) na funkciju
+\textit{onMouse}. Funkciji \textit{onMouse} se također kroz
+\textit{setMouseCallback} predaje i slika nad kojom je definiran
+\textit{callback}.
+\\
+
+\begin{lstlisting}[language=C,caption={Rezanje slike}]
+void onMouse( int event, int x, int y, int flags, void* param ) {
+    Mat& image = *(Mat*) param;
+    switch( event ) {
+        case CV_EVENT_LBUTTONDOWN:
+            drawing_box = true;
+            box = Rect(x, y, 0, 0);
+            break;
+        case CV_EVENT_MOUSEMOVE: 
+            if( drawing_box ) {
+                box.width = x-box.x;
+                box.height = y-box.y;
+            } break;
+        case CV_EVENT_LBUTTONUP: 
+            drawing_box = false;
+            if( box.width<0 ) {
+                box.x+=box.width;
+                box.width *= -1;
+            }
+            if( box.height<0 ) {
+                box.y+=box.height;
+                box.height*=-1;
+            }
+            draw_box( image, box );
+            crop_image( image, box);
+            break; } } 
+void draw_box( Mat& img, Rect rect ){
+    rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
+}
+void crop_image( Mat& img, Rect rect ){
+    Mat imgRoi = img(rect);
+    namedWindow( "ImgROI", CV_WINDOW_AUTOSIZE );
+    imshow( "ImgROI", imgRoi );
+}
+\end{lstlisting}
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.4]{images/lab1-02-crop.png}
+\caption{Rezanje slike}
+\label{fig:lab1-02-crop}
+\end{figure}
+
+\newpage
 \subsubsection{Učitavanje videa}
-% \lstinputlisting{$HOME/OpenCV-labs/lab1/edge_crop_video.cpp}
+Učitavanje videa ili kamere se događa nakon pritiska tipke
+\textbf{``v''}. Time pozivamo funkciju \textit{init\_camera} koja
+stvori objekt tipa \textit{VideoCapture}. Objekt prvo pokušu učitat
+kameru ako ne uspije provjerava \textit{argv[2]} za drugim izvorom
+kamere ili videa. Nakon toga u beskonačnoj petlji objekta se izvlači 
+frame po frame i prikazuje u prozoru \textit{``camera``}.
+\\
+\begin{lstlisting}[language=C,caption={Učitavanje videa}]
+void init_camera(){
+    cout << "Starting camera mode... \n";
+    VideoCapture cap(0);
+    if( !cap.isOpened() ){
+        cout << "isprobavam argv2 " 
+            << global_argv[2] << endl;
+        cap.open( global_argv[2] );
+        if( !cap.isOpened() ){
+            cerr << "fail i preko argv[2] \n"; 
+            } 
+        }
+    while( 1 ){
+        cap >> frame;
+        if(!frame.data) break;
+        namedWindow( "camera", CV_WINDOW_AUTOSIZE );
+        imshow( "camera", frame );
+        char c = waitKey(10);
+        if( c == 'V' ){
+            destroyWindow("camera");
+            break; 
+            } 
+        } 
+    }
+\end{lstlisting}
+
+
+\subsection{Zaključak}
+
+
+Osnovni zadaci ove vježbe su bili upoznavanje s OpenCV bibliotekom,
+podešavanje radne okoline i rješavanje par jednostavnijih zadataka.
+Inicijalno podešavanje radne okoline je bitan zadatak jer o njemu ovisi
+izvedba ove i budućih vježbi.
+S OpenCV bibliotekom smo se upoznali kroz rješavanje zadataka.
+Pisanje jednostavnog programa za detektiranje rubova na slici nam je
+pružilo uvid u deklariranje \textit{Mat} varijabli za spremanje slika,
+pozivanje OpenCV funkcija i prikazivanje tih slika.
+Rješavanje problema rezanja slike nam je omogućilo upoznavanje s
+\textit{mouseCallback} funkcijom koja je sastavni dio većine grafičkih
+programa. Njeno razumjevanje je ključan dio za pisanje programa koji traže
+interakciju s korisnikom. Osim toga naučili korisiti funkciju
+\textit{rectangle} za crtanje pravokutnika na slici i definirati regiju
+intersa na slici. 
+Zadnji dio zadatka se odnosio na učitavanje videa. Osnovna stvar je bila
+shvatiti kako \textit{VideoCapture} objekt funkcionira, te koje njegove
+metode možemo korisiti.
+Svi ovi zadaci su okosnice drugi programa. Detekcija rubova na slici s
+kamere se može korisiti u programu koji detektira pokret.
+Rezanje slike je poželjna funkcija svakog preglednika slika.
 
