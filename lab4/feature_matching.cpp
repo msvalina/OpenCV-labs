@@ -46,8 +46,8 @@ char ** global_argv;
 int lowThreshold;
 int max_lowThreshold = 200;
 int ratio = 3;
-int max_Trackbar = 5;
-int match_method = 0;
+int max_Trackbar = 1;
+int match_method = 5;
 
 int main(int argc, char** argv) {
     help();
@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
                 break;
             case 'T':
                 destroyWindow( "source" );
-                destroyWindow( "result" );
+                // destroyWindow( "result" );
                 break;
             case 'S':
                 destroyWindow( "snapshot" );
@@ -179,7 +179,7 @@ void onMouse( int event, int x, int y, int flags, void* param ) {
                 << crop_box.x << "\t" << crop_box.y << "\t" 
                 << crop_box.height << "\t" << crop_box.width << "\n";
             cropImage( image, crop_box);
-            //drawBox( image, box );
+            //drawBox( image, crop_box );
             break;
     }
 } 
@@ -230,9 +230,9 @@ void initCamera( ){
 }
 void matchTemplateTrackbar( ){
     namedWindow( "source", CV_WINDOW_AUTOSIZE );
-    namedWindow( "result", CV_WINDOW_AUTOSIZE );
+    // namedWindow( "result", CV_WINDOW_AUTOSIZE );
 
-    char* trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    char* trackbar_label = "Method: \n 5: TM COEFF NORMED";
     createTrackbar( trackbar_label, "source", &match_method, max_Trackbar, matchTemplateOnCrop );
 
     matchTemplateOnCrop( 0, 0 );
@@ -243,33 +243,42 @@ void matchTemplateOnCrop( int, void* ){
     loaded_img.copyTo( source_img );
     croped_roi.copyTo( templ_img );
 
+    Mat gsource_img, gtempl_img;
+    cv::cvtColor(source_img, gsource_img, CV_BGR2GRAY);
+    cv::cvtColor(templ_img, gtempl_img, CV_BGR2GRAY);
     /// Create the result matrix
-    int result_cols =  loaded_img.cols - templ_img.cols + 1;
-    int result_rows = loaded_img.rows - templ_img.rows + 1;   
+    int result_cols =  source_img.cols - templ_img.cols + 1;
+    int result_rows = source_img.rows - templ_img.rows + 1;   
 
-    result_img.create( result_cols, result_rows, CV_32FC1 );
+    result_img.create( result_rows, result_cols, CV_32FC1 );
 
     /// Do the Matching and Normalize
-    matchTemplate( loaded_img, templ_img, result_img, match_method );
-    normalize( result_img, result_img, 0, 1, NORM_MINMAX, -1, Mat() );
+    matchTemplate( gsource_img, gtempl_img, result_img, 5);
+    normalize( result_img, result_img, 0, 1., NORM_MINMAX, -1, Mat() );
+    // Remove non matching results with tresholding
+    threshold( result_img, result_img, 0.8, 1., THRESH_BINARY);
+    // threshold( result_img, result_img, 0.8, 1, CV_THRESH_TOZERO );
 
-    /// Localizing the best match with minMaxLoc
-    double minVal; double maxVal; Point minLoc; Point maxLoc;
-    Point matchLoc;
+    // Localizing the best match with minMaxLoc
+    // Used only for testing purpose
+    double minVal; double maxVal; double threshold=0.8;
+    Point minLoc; Point maxLoc; Point matchLoc;
+    minMaxLoc( result_img, &minVal, &maxVal, &minLoc, &maxLoc);
+    rectangle( source_img, maxLoc, Point( maxLoc.x + templ_img.cols , maxLoc.y + templ_img.rows ), Scalar(0,0,255) ); 
 
-    minMaxLoc( result_img, &minVal, &maxVal, &minLoc, &maxLoc, Mat() );
-
-    /// For SQDIFF and SQDIFF_NORMED, the best matches are lower values. For all the other methods, the higher the better
-    if( match_method  == CV_TM_SQDIFF || match_method == CV_TM_SQDIFF_NORMED )
-    { matchLoc = minLoc; }
-    else  
-    { matchLoc = maxLoc; }
-
-    rectangle( source_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(0), 2, 8, 0 ); 
-    rectangle( result_img, matchLoc, Point( matchLoc.x + templ_img.cols , matchLoc.y + templ_img.rows ), Scalar::all(1), 2, 8, 0 ); 
-
+    int x,y;
+    // Udi u prvi red i prodi kroz sve stupce 
+    for (y = 1; y < result_img.rows -1; y++) {
+        for (x = 1; x < result_img.cols -1; x++) {
+            if (result_img.at<float>(y,x) > 0) {
+                cout << y << "," << x << " = " << result_img.at<float>(y,x) << endl; 
+                // rectangle( source_img, Point(y,x), Point (y+templ_img.rows, x+templ_img.cols), Scalar(0,255,0));  
+                rectangle( source_img, Point(x,y), Point (x+templ_img.cols, y+templ_img.rows), Scalar(0,255,0));  
+            }
+        }
+    }
     imshow( "source", source_img );
-    imshow( "result", result_img );
+    imshow( "result", result_img);
 }
 
 void savePoint( int x, int y ){
