@@ -46,7 +46,7 @@ char ** global_argv;
 int lowThreshold;
 int max_lowThreshold = 200;
 int ratio = 3;
-int max_Trackbar = 1;
+int max_Trackbar = 5;
 int match_method = 5;
 
 int main(int argc, char** argv) {
@@ -230,10 +230,10 @@ void initCamera( ){
 }
 void matchTemplateTrackbar( ){
     namedWindow( "source", CV_WINDOW_AUTOSIZE );
-    // namedWindow( "result", CV_WINDOW_AUTOSIZE );
+    namedWindow( "result", CV_WINDOW_AUTOSIZE );
 
-    char* trackbar_label = "Method: \n 5: TM COEFF NORMED";
-    createTrackbar( trackbar_label, "source", &match_method, max_Trackbar, matchTemplateOnCrop );
+    char* trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    createTrackbar( trackbar_label, "source" , &match_method, max_Trackbar, matchTemplateOnCrop );
 
     matchTemplateOnCrop( 0, 0 );
 }
@@ -253,11 +253,10 @@ void matchTemplateOnCrop( int, void* ){
     result_img.create( result_rows, result_cols, CV_32FC1 );
 
     /// Do the Matching and Normalize
-    matchTemplate( gsource_img, gtempl_img, result_img, 5);
+    matchTemplate( gsource_img, gtempl_img, result_img, match_method);
     normalize( result_img, result_img, 0, 1., NORM_MINMAX, -1, Mat() );
     // Remove non matching results with tresholding
     threshold( result_img, result_img, 0.8, 1., THRESH_BINARY);
-    // threshold( result_img, result_img, 0.8, 1, CV_THRESH_TOZERO );
 
     // Localizing the best match with minMaxLoc
     // Used only for testing purpose
@@ -266,17 +265,23 @@ void matchTemplateOnCrop( int, void* ){
     minMaxLoc( result_img, &minVal, &maxVal, &minLoc, &maxLoc);
     rectangle( source_img, maxLoc, Point( maxLoc.x + templ_img.cols , maxLoc.y + templ_img.rows ), Scalar(0,0,255) ); 
 
-    int x,y;
-    // Udi u prvi red i prodi kroz sve stupce 
-    for (y = 1; y < result_img.rows -1; y++) {
-        for (x = 1; x < result_img.cols -1; x++) {
+    // Find all best matches and paint them
+    // Go through every pixel from top left corner to right, top to down
+    for (int y = 1; y < result_img.rows -1; y++) {
+        for (int x = 1; x < result_img.cols -1; x++) {
+            // search postion (y,x) but draw at (x,y) because pixels 
+            // are showed difrently 
             if (result_img.at<float>(y,x) > 0) {
                 cout << y << "," << x << " = " << result_img.at<float>(y,x) << endl; 
-                // rectangle( source_img, Point(y,x), Point (y+templ_img.rows, x+templ_img.cols), Scalar(0,255,0));  
                 rectangle( source_img, Point(x,y), Point (x+templ_img.cols, y+templ_img.rows), Scalar(0,255,0));  
             }
         }
     }
+    // I think this is safest method for "scaning" images
+    // MatIterator_<uchar> it, end;
+    // for( it = I.begin<uchar>(), end = I.end<uchar>(); it != end; ++it)
+    //*it = table[*it];
+    // break;
     imshow( "source", source_img );
     imshow( "result", result_img);
 }
