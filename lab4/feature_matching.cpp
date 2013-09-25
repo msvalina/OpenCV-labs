@@ -10,12 +10,15 @@ void
 help(){
 cout << "Usage: ./binary <image_name> \n"
 "Hot keys: \n"
-"\tr/R toggle croping \n"
-"\tc/C toggle camera \n"
-"\ts/S toggle taking screenshoot\n"
-"\th/H toggle Hough Transform on screenshot\n"
-"\te/E toggle edge detetction \n" 
-"\tt/T toggle template matching\n";
+"\trun/kill \n"
+"\te/E -- edge detetction \n" 
+"\tr/R -- croping \n"
+"\tc/C -- camera \n"
+"\tt/T -- template matching\n"
+"\ti/I -- take screenshoot\n"
+"\th/H -- Hough Transform on screenshot\n"
+"\ts/S -- SURF\n"
+"\tq/ESC -- Exit \n \n";
 }
 
 void cannyEdge( Mat& img, Rect rect );
@@ -53,12 +56,14 @@ int main(int argc, char** argv) {
     help();
     globalArgv = argv;
     
+    string imageName;
     if (argc < 2) {
-        cout << " Usage: "<< argv[0] <<" <image> " << endl;
-        return -1;
+        cout << "Using default images/lena_color_256.tif image" << endl;
+        imageName = "../images/lena_color_256.tif";
     }
+    else 
+    imageName = argv[1];
 
-    char* imageName = argv[1];
     loadedImg = imread( imageName, CV_LOAD_IMAGE_COLOR);
  
     if( !loadedImg.data ) {
@@ -81,8 +86,9 @@ int main(int argc, char** argv) {
         switch( c )
         {
             case 27:
-                cout << "Exiting ... \n ";
-                return 0;
+                cout << "Exiting \n "; return 0;
+            case 'q':
+                cout << "Exiting \n "; return 0;
             case 'e':
                 cannyEdge( loadedImg, cannyBox );
                 break;
@@ -90,7 +96,7 @@ int main(int argc, char** argv) {
                 destroyWindow("canny");
                 break;
             case 'r':
-                cout << "Setting callback, calling cropImage  ...\n";
+                cout << "Setting callback onMouse, calling cropImage()\n";
                 setMouseCallback( imageName, onMouse, (void*)&loadedImg );
                 break;
             case 'R':
@@ -101,29 +107,35 @@ int main(int argc, char** argv) {
                 break;
             case 't':
                 if(!cropedRoi.data){
-                    cout << "nisi cropao nista" << endl;
+                    cout << "First crop template with \"r\" " << endl;
                     break;
                 }
                 matchTemplateTrackbar( );
                 break;
             case 'T':
                 destroyWindow( "source" );
-                // destroyWindow( "result" );
+                destroyWindow( "result" );
+                destroyWindow( "croped" );
                 break;
-            case 'S':
+            case 'I':
                 destroyWindow( "snapshot" );
                 break;
             case 'h':
-                cannyEdge( ssImg, ssBox );
-                break;
-            case 'H':
+                // if(!ssImg.data){
+                //     cout << "First take image with camera\n";
+                //     break;
+                // }
+                // cannyEdge( ssImg, ssBox );
                 if(!cannyOut.data){
-                    cout << "pozivi canny" << endl;
+                    cout << "First run edge detection" << endl;
                     break;
                 }
                 callHoughTransform( );
                 break;
-            case 'l':
+            case 'H':
+                destroyWindow( "snapshot" );
+                break;
+            case 's':
                 surfFlannMatcher( );
                 break;
         }
@@ -211,10 +223,10 @@ void initCamera( ){
         imshow( "camera", camFrame );
         char c = waitKey(10);
         switch( c ) {
-            case 'o':
+            case 'C':
                 camera = false;
                 break;
-            case 's':
+            case 'i':
                 camFrame.copyTo( ssImg );
                 namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
                 imshow( "snapshot", ssImg );
@@ -229,7 +241,7 @@ void matchTemplateTrackbar( ){
     namedWindow( "source", CV_WINDOW_AUTOSIZE );
     namedWindow( "result", CV_WINDOW_AUTOSIZE );
 
-    char* trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
+    string trackbar_label = "Method: \n 0: SQDIFF \n 1: SQDIFF NORMED \n 2: TM CCORR \n 3: TM CCORR NORMED \n 4: TM COEFF \n 5: TM COEFF NORMED";
     createTrackbar( trackbar_label, "source" , &matchMethod, maxTrackbar, matchTemplateOnCrop );
 
     matchTemplateOnCrop( 0, 0 );
@@ -246,7 +258,6 @@ void matchTemplateOnCrop( int, void* ){
     /// Create the result matrix
     int result_cols =  sourceImg.cols - templImg.cols + 1;
     int result_rows = sourceImg.rows - templImg.rows + 1;   
-
     resultImg.create( result_rows, result_cols, CV_32FC1 );
 
     /// Do the Matching and Normalize
@@ -267,9 +278,9 @@ void matchTemplateOnCrop( int, void* ){
     for (int y = 1; y < resultImg.rows -1; y++) {
         for (int x = 1; x < resultImg.cols -1; x++) {
             // search postion (y,x) but draw at (x,y) because pixels 
-            // are showed difrently 
+            // are shown diffrently 
             if (resultImg.at<float>(y,x) > 0) {
-                cout << y << "," << x << " = " << resultImg.at<float>(y,x) << endl; 
+                // cout << y << "," << x << " = " << resultImg.at<float>(y,x) << " , ";
                 rectangle( sourceImg, Point(x,y), Point (x+templImg.cols, y+templImg.rows), Scalar(0,255,0));  
             }
         }
@@ -358,7 +369,7 @@ void callHoughTransform( ){
     Mat B( 3, 1, CV_32F );
 
     solvePnP( Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false );
-    // solvePnP mijenja Mat type u CV_32F te se elementima moram pristupat s .at<dobule>
+    // solvePnP changes Mat type in CV_32F 
     cout << "tvec = " << tvec <<  endl;
 
     Rodrigues( rvec, R );
@@ -388,7 +399,6 @@ void callHoughTransform( ){
 
     cout << "Theta = " << thetaCrtano*180/CV_PI << endl;
     cout << "Rho = " << rhoCrtano << endl;
-
 }
 
 void surfFlannMatcher( ){
@@ -452,5 +462,4 @@ void surfFlannMatcher( ){
 
     for( int i = 0; i < good_matches.size(); i++ )
     { printf( "-- Good Match [%d] Keypoint 1: %d  -- Keypoint 2: %d  \n", i, good_matches[i].queryIdx, good_matches[i].trainIdx ); }
-
 }
