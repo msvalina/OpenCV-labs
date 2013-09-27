@@ -6,9 +6,10 @@
 using namespace cv;
 using namespace std;
 
-void 
-help(){
-cout << "Usage: ./binary <image_name> \n"
+void help ()
+{
+cout << 
+"Usage: ./binary <image_name> \n"
 "Hot keys: \n"
 "\trun/kill \n"
 "\te/E -- edge detetction \n" 
@@ -44,6 +45,8 @@ vector<Point2f> imagePoints(4);
 Size2i size;
 Rect cropBox, cannyBox, ssBox;
 bool drawingBox = false;
+bool pointSelected = false;
+bool imageTaken = false;
 char ** globalArgv;
 int lowThreshold;
 int maxLowThreshold = 200;
@@ -121,18 +124,20 @@ int main (int argc, char** argv)
                 destroyWindow ("snapshot");
                 break;
             case 'h':
-                // if(!ssImg.data){
-                //     cout << "First take image with camera\n";
-                //     break;
-                // }
-                // cannyEdge( ssImg, ssBox );
-                if(!cannyOut.data){
-                    cout << "First run edge detection" << endl;
-                    break; 
+                if (!imageTaken) {
+                    if (pointSelected) {
+                        cannyEdge (loadedImg, ssBox);
+                        cout << "Points?!1\n";
+                    }
+                    setMouseCallback (imageName, getPoints, 0);
+                    cout << "No data from camera. Using argv[1] or \ default image\n";
                 }
-                callHoughTransform ();
+                else { 
+                cannyEdge (ssImg, ssBox);
+                }
                 break;
             case 'H':
+                callHoughTransform ();
                 destroyWindow ("snapshot");
                 break;
             case 's':
@@ -186,10 +191,10 @@ void onMouse (int event, int x, int y, int flags, void* param)
                 cropBox.y+=cropBox.height;
                 cropBox.height*=-1;
             }
-            cout << "box coordinates \n" 
-                << "x\t y\t height\t width\n"
-                << cropBox.x << "\t" << cropBox.y << "\t" 
-                << cropBox.height << "\t" << cropBox.width << "\n";
+            // cout << "box coordinates \n" 
+            //     << "x\t y\t height\t width\n"
+            //     << cropBox.x << "\t" << cropBox.y << "\t" 
+            //     << cropBox.height << "\t" << cropBox.width << "\n";
             cropImage (image, cropBox);
             //drawBox (image, cropBox);
             break;
@@ -236,6 +241,8 @@ void initCamera ()
                 camFrame.copyTo (ssImg);
                 namedWindow ("snapshot", CV_WINDOW_AUTOSIZE);
                 imshow ("snapshot", ssImg);
+                imwrite ("snapshot.jpeg", ssImg);
+                imageTaken = true;
                 cout << " Setting MouseCallback on getPoints " << endl;
                 setMouseCallback ("snapshot", getPoints, 0);
                 break;
@@ -291,8 +298,7 @@ void matchTemplateOnCrop (int, void*)
     // Go through every pixel from top left corner to right, top to down
     for (int y = 1; y < resultImg.rows -1; y++) {
         for (int x = 1; x < resultImg.cols -1; x++) {
-            // search postion (y,x) but draw at (x,y) because pixels 
-            // are shown diffrently 
+            // search postion (y,x) but draw at (x,y) 
             if (resultImg.at<float>(y,x) > 0) {
                 // cout << y << "," << x << " = " <<
                 // resultImg.at<float>(y,x) << " , ";
@@ -336,6 +342,7 @@ void savePoint (int x, int y)
         ssBox.y = pt1.y;
         ssBox.width = pt4.x - ssBox.x;
         ssBox.height = pt4.y - ssBox.y;
+        pointSelected = true;
         cout << pt4.x << " " << pt4.y << endl;
         cout << ssBox.width << " " << ssBox.height << endl;
     }
@@ -355,15 +362,21 @@ void getPoints (int event, int x, int y, int flags, void* param)
 
 void callHoughTransform ()
 {
-    // Find lines in edge point image using Hough Transform
+    /*
+     * Find lines in edge point image using Hough Transform
+     * HT is operating in polar coordinte system so our lines are
+     * represented with: 
+     * rho - vector from origin of c.s to line (perpendicular to line) 
+     * theta - angle form positive x axis to rho (range -90-90)
+     */
     vector<Vec2f> lines;
     HoughLines (cannyOut, lines, 1, CV_PI/180, 100, 0, 0);
-    cout << "Lines = " << Mat( lines ) << endl;
+    /* cout << "Lines = " << Mat( lines ) << endl; */
     float rho, rhoRoi, theta;
     rhoRoi = lines[0][0];
     theta = lines[0][1];
 
-    // Transfer rho in image koordinetes
+    // rho 
     rho = rhoRoi + pt1.x * cos(theta) + pt1.y * sin(theta);
     // cout << "rhoRoi = " << rhoRoi << endl;
     // cout << "theta = " << theta << endl;
@@ -399,26 +412,23 @@ void callHoughTransform ()
     // Estimate object position from 3D-2D point correspondences.
     solvePnP (Mat (objectPoints), Mat (imagePoints), intrinsics,
             distortion, rvec, tvec, false);
-    // solvePnP changes Mat type in CV_32F 
     
-    // Converts rotation vector to rotation matrix
-    Rodrigues (rvec, R);
-    //cout << "R = " << R <<  endl;
     // Rotation matrix - describes orientation of object c.s. in regards
     // to camera c.s
     Mat R (3, 3, CV_32F);
+    // Converts rotation vector to rotation matrix
+    Rodrigues (rvec, R);
+    //cout << "R = " << R <<  endl;
 
-    // A matrix stores  kk
+    // A matrix store unit converted rotation matrix
     Mat A (3, 3, CV_32F);
     A = intrinsics * R; 
 
-    // 
+    // B vector stores crorrected translation vector
     Mat B (3, 1, CV_32F);
     B = intrinsics * tvec;
     //cout << "B = " << B <<  endl;
     //cout << "A = " << endl << " " << A << endl << endl;
-    //cout << "A[1] = " << A.at<double>(0,0) << " A[1] = " <<
-    //A.at<double>(0,1) << endl;
 
     double lambdaX, lambdaY, lambdaRo, rhoCrtano, thetaCrtano;
     // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31
