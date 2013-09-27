@@ -32,7 +32,7 @@ void matchTemplateTrackbar ();
 void matchTemplateOnCrop (int, void*);
 void getPoints (int event, int x, int y, int flags, void* param);
 void savePoint (int x, int y);
-void callHoughTransform ();
+int callHoughTransform ();
 void surfFlannMatcher ();
 
 Mat loadedImg, ssImg, camFrame;
@@ -365,7 +365,7 @@ void getPoints (int event, int x, int y, int flags, void* param)
     }
 }
 
-void callHoughTransform ()
+int callHoughTransform ()
 {
     /*
      * Find lines in edge point image using Hough Transform
@@ -376,14 +376,20 @@ void callHoughTransform ()
      */
     vector<Vec2f> lines;
     HoughLines (cannyOut, lines, 1, CV_PI/180, 100, 0, 0);
-    /* cout << "Lines = " << Mat( lines ) << endl; */
+    // cout << "Lines = " << Mat( lines ) << endl;
+    if (lines.empty()) {
+        cout << "HT didn't find any lines, run canny again with more\
+            details\n";
+        return -1;
+    }
     float rho, rhoRoi, theta;
     rhoRoi = lines[0][0];
     theta = lines[0][1];
 
+    cout << "rhoRoi = " << rhoRoi << endl;
     // rho 
     rho = rhoRoi + pt1.x * cos(theta) + pt1.y * sin(theta);
-    // cout << "rhoRoi = " << rhoRoi << endl;
+    cout << "rho = " << rho << endl;
     // cout << "theta = " << theta << endl;
 
     // Read calibration parameters
@@ -399,11 +405,12 @@ void callHoughTransform ()
     // cout << "intrinsics = " << intrinsics <<  endl;
     // cout << "distortion = " << distortion <<  endl;
 
+    // Dimension's of graph paper in mm
     vector<Point3f> objectPoints (4);
     objectPoints[0] = Point3f (0, 0, 0);
-    objectPoints[1] = Point3f (0, 250, 0);
-    objectPoints[2] = Point3f (190, 0, 0);
-    objectPoints[3] = Point3f (190, 250, 0);
+    objectPoints[1] = Point3f (0, 265, 0);
+    objectPoints[2] = Point3f (170, 0, 0);
+    objectPoints[3] = Point3f (170, 265, 0);
     // cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
     // cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
@@ -450,6 +457,10 @@ void callHoughTransform ()
     rhoCrtano = lambdaRo / sqrt (lambdaX * lambdaX + lambdaY * lambdaY);
     cout << "Theta = " << thetaCrtano*180/CV_PI << endl;
     cout << "Rho = " << rhoCrtano << endl;
+    // ispisat text na sliku
+    // cv::putText(imgOut, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
+    return 0;
+
 }
 
 void surfFlannMatcher ()
