@@ -27,7 +27,7 @@ void cannyTreshold (int, void*);
 void initCamera ();
 void onMouse (int event, int x, int y, int flags, void* param);
 void drawBox (Mat& img, Rect rect);
-void cropImage (Mat& img, Rect rect);
+void showSelRoi (Mat& img, Rect rect);
 void matchTemplateTrackbar ();
 void matchTemplateOnCrop (int, void*);
 void getPoints (int event, int x, int y, int flags, void* param);
@@ -40,6 +40,7 @@ Mat cannyRoi, cannyGray, cannyDetectedEdges, cannyOut;
 Mat cropedRoi;
 Mat templImg, resultImg; 
 
+string imageName;
 Point pt1, pt2, pt3, pt4;
 vector<Point2f> imagePoints(4);
 Size2i size;
@@ -60,7 +61,6 @@ int main (int argc, char** argv)
     help ();
     globalArgv = argv;
     
-    string imageName;
     if (argc < 2) {
         cout << "Using default images/lena_color_256.tif image" << endl;
         imageName = "../images/lena_color_256.tif";
@@ -99,11 +99,11 @@ int main (int argc, char** argv)
                 destroyWindow ("canny");
                 break;
             case 'r':
-                cout << "Setting callback onMouse, calling cropImage()\n";
+                cout << "Setting callback onMouse, calling showSelRoi()\n";
                 setMouseCallback (imageName, onMouse, (void*)&loadedImg);
                 break;
             case 'R':
-                destroyWindow ("croped");
+                destroyWindow ("selectedRoi");
                 break;
             case 'c':
                 initCamera ();
@@ -118,7 +118,7 @@ int main (int argc, char** argv)
             case 'T':
                 destroyWindow ("source");
                 destroyWindow ("result");
-                destroyWindow ("croped");
+                destroyWindow ("selectedRoi");
                 break;
             case 'I':
                 destroyWindow ("snapshot");
@@ -169,7 +169,8 @@ void cannyEdge (Mat& img, Rect rect)
 
 void onMouse (int event, int x, int y, int flags, void* param) 
 {
-    Mat& image = *(Mat*) param;
+    Mat& imageLink = *(Mat*) param;
+    Mat image = imageLink.clone();
     switch (event) {
         case CV_EVENT_LBUTTONDOWN:
             drawingBox = true;
@@ -195,22 +196,26 @@ void onMouse (int event, int x, int y, int flags, void* param)
             //     << "x\t y\t height\t width\n"
             //     << cropBox.x << "\t" << cropBox.y << "\t" 
             //     << cropBox.height << "\t" << cropBox.width << "\n";
-            cropImage (image, cropBox);
-            //drawBox (image, cropBox);
+            showSelRoi (image, cropBox);
             break;
+    }
+    if (drawingBox) {
+    drawBox (image, cropBox);
+    imshow (imageName, image);
     }
 } 
 
 void drawBox (Mat& img, Rect rect)
 {
     rectangle( img, rect.tl(), rect.br(), Scalar(0,0,255));
+    imshow (imageName, loadedImg);
 }
 
-void cropImage (Mat& img, Rect rect)
+void showSelRoi (Mat& img, Rect rect)
 {
     cropedRoi = img (rect);
-    namedWindow ("croped", CV_WINDOW_AUTOSIZE);
-    imshow ("croped", cropedRoi);
+    namedWindow ("selectedRoi", CV_WINDOW_AUTOSIZE);
+    imshow ("selectedRoi", cropedRoi);
 }
 
 void initCamera ()
