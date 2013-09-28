@@ -14,21 +14,21 @@ koordinatnom sustavu milimetarskog papira. Provjeriti koliko je
 odstupanje dobivenog pravca od stvarnog (odgovarajućeg) ruba objekta.
 
 \subsection{Kalibracija kamere}
-Cijenovna prihvatljivosti web kamera ima
-svoju negativnu stranu, a to je značajna distorzija. 
-Postoji radijalna (\textit{fisheye} efekt i tangencijalna (leće kamere
-nisu u savršeno paralelene s ravninom slikanja) distorzija. Zato
-kalibracijom kamere možemo rješiti te nedostatke. Isto tako kalibracijom
-možemo odrediti vezu između piksela i milimetara.
+Cijenovna prihvatljivosti web kamera ima svoju negativnu stranu, a to je
+značajna distorzija. Postoji radijalni efekt (\textit{fisheye}) i
+tangencijalna distorzija (leće kamere nisu u savršeno paralelene s
+ravninom slikanja). Zato kalibracijom kamere možemo rješiti te
+nedostatke. Isto tako kalibracijom možemo odrediti vezu između piksela i
+milimetara.
 
 Za kalibraciju smo koristili program koji se kompajlira prilikom
 kompajliranja OpenCV biblioteke. Pomoću njega smo dobili koeficiente
-distorzije i matricu kamere. Ti podatke program dobije računanjem
-jednostavnih geometrijskih jednađbi nad primjerom crno bijele šahovske ploče.
+distorzije i matricu kamere. Te podatke program dobije računanjem
+jednostavnih geometrijskih jednadžbi nad primjerom crno bijele šahovske ploče.
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.4]{images/lab3-01-calib.png}
+\includegraphics[scale=0.37]{images/lab3-01-calib.png}
 \caption{Kalibracija kamere}
 \label{fig:lab3-01-calib}
 \end{figure}
@@ -39,113 +39,160 @@ jednostavnih geometrijskih jednađbi nad primjerom crno bijele šahovske ploče.
 \subsubsection{Kontrola programa}
 
 Prilikom pokretanja programa iz komandne linije potrebno je 
-predati programu putanju do slike (argv[1]) u protivnom se program 
-nece pokrenuti. \\
+predati programu putanju do slike (argv[1]) ako nad njom želimo provesit
+HT ili možemo uzeti sliku putem kamere.
+\\
 \begin{lstlisting}[language=C,caption={Kontrola programa tipkovnicom}]
 while (1){
     char c = waitKey(10);
     switch(c) {
             case 'c':
-                initCamera( );
-                break;
-            case 'o':
-                camera = false;
-                break;
-            case 's':
-                cam_frame.copyTo( ss_img );
-                namedWindow( "snapshot", CV_WINDOW_AUTOSIZE );
-                imshow( "snapshot", ss_img );
-                cout << " Setting MouseCallback getPoints " << endl;
-                setMouseCallback( "snapshot", getPoints, 0 );
+                initCamera ();
                 break;
             case 'h':
-                cannyEdge( ss_img, ss_box );
+                if (!imageTaken) {
+                    if (pointSelected) {
+                        cannyEdge (loadedImg, ssBox);
+                        cout << "Points?!1\n";
+                    }
+                    setMouseCallback (imageName, getPoints, 0);
+                    cout << "No data from camera. Using argv[1] or \ default image\n";
+                }
+                else { 
+                cannyEdge (ssImg, ssBox);
+                }
                 break;
             case 'H':
-                if(!canny_out.data){
-                    cout << "pozivi canny" << endl;
-                    break;
-                }
-                callHoughTransform( );
+                callHoughTransform ();
+                destroyWindow ("snapshot");
                 break;
 \end{lstlisting}
 
 \begin{itemize}
     \item Pokrenut kameru pritiskom na ``c''
-    \item Uslikati objekt na milimetarskom papiru s ``s''
+    \item Uslikati objekt na milimetarskom papiru s ``i''
     \item Označiti (klikom) četiri ugla milimetarskog papira
-    \item Ugasiti kameru pritsikom na ``o''
+    \item Ugasiti kameru pritsikom na ``C''
     \item Pokrenuti filtiranje slike pritiskom na ``h''
     \item Pozvati houghovu transformaciju pritiskom na ``H''
 \end{itemize}
 
 
 \subsubsection{Houghova transformacija}
-Houghovu transformaciju, odnosno detektiranje linija je implementirano u
-funkciji \textit{cv::HoughLines()}. Njoj smo predali sliku uslikanu
-kamerom i detektiranom linijom. Funkcija nam tada vraća parametre 
-\(\rho \) i \( \theta \) u 2D slici iz kojih određujemo parametre 
-\(\rho \)' i \( \theta\)' u 3D prostoru.
+Detektiranje linija i određivanje  \(\rho \) i \( \theta \) u
+koordinatnom sustavu milimetarskog papira je implementirano u funkciji
+\textit{callHoughTransform()}.
+
+\begin{lstlisting}[language=C,caption={Racunanje parametra ro i theta}]
+int callHoughTransform ()
+{
+    /*
+     * Find lines in edge point image using Hough Transform
+     * HT is operating in polar coordinte system so our lines are
+     * represented with: 
+     * rho - vector from origin of c.s to line (perpendicular to line) 
+     * theta - angle form positive x axis to rho (range -90-90)
+     */
+    vector<Vec2f> lines;
+    HoughLines (cannyOut, lines, 1, CV_PI/180, 100, 0, 0);
+    // cout << "Lines = " << Mat( lines ) << endl;
+    if (lines.empty()) {
+        cout << "HT didn't find lines, run edge with more details\n";
+        return -1;
+    }
+    float rho, rhoRoi, theta;
+    rhoRoi = lines[0][0];
+    theta = lines[0][1];
+    // Computes rho in image c.s.
+    rho = rhoRoi + pt1.x * cos(theta) + pt1.y * sin(theta);
+    // Read calibration parameters
+    FileStorage fs ("../lab3/calib/cam-c270.xml", FileStorage::READ);
+    // Intrinsics/projection matrix with fx,fy,u,v intrinsics camera
+    // parameters for unit conversion
+    Mat intrinsics (3, 3, CV_32F); 
+    fs ["camera_matrix"] >> intrinsics; 
+    // Distortion matrix with k1,k2,p1,p2,k3 distortion coefficients
+    // for correcting cameras radial and tangential distortion
+    Mat distortion (5, 1, CV_32F);
+    fs ["distortion_coefficients"] >> distortion; 
+    // Dimension's of graph paper in mm
+    vector<Point3f> objectPoints (4);
+    objectPoints[0] = Point3f (0, 0, 0);
+    objectPoints[1] = Point3f (0, 265, 0);
+    objectPoints[2] = Point3f (170, 0, 0);
+    objectPoints[3] = Point3f (170, 265, 0);
+    // Rotation vector output from solvePnP
+    Mat rvec (1, 3, CV_32F);
+    // Translation vetor - descrabise position of object c.s.     
+    // in regards to camera c.s
+    Mat tvec (1, 3, CV_32F);
+    // Estimate object position from 3D-2D point correspondences.
+    solvePnP (Mat (objectPoints), Mat (imagePoints), intrinsics,
+            distortion, rvec, tvec, false);
+    // Rotation matrix - describes orientation of object c.s. 
+    // in regards to camera c.s
+    Mat R (3, 3, CV_32F);
+    // Converts rotation vector to rotation matrix
+    Rodrigues (rvec, R);
+    //cout << "R = " << R <<  endl;
+    // A matrix store unit converted rotation matrix
+    Mat A (3, 3, CV_32F);
+    A = intrinsics * R; 
+    // B vector stores crorrected translation vector
+    Mat B (3, 1, CV_32F);
+    B = intrinsics * tvec;
+    double lambdaX, lambdaY, lambdaRo, rhoCrtano, thetaCrtano;
+    lambdaX = A.at<double>(0,0) * cos(theta) + A.at<double>(1,0) *
+        sin(theta) - rho * (A.at<double>(2,0));
+    lambdaY = A.at<double>(0,1) * cos(theta) + A.at<double>(1,1) *
+        sin(theta) - rho * (A.at<double>(2,1));
+    lambdaRo = rho * (B.at<double>(2)) - B.at<double>(0) * 
+        cos(theta) - B.at<double>(1) * sin(theta); 
+    thetaCrtano = atan2 (lambdaY, lambdaX);
+    rhoCrtano = lambdaRo / sqrt (lambdaX * lambdaX + lambdaY * lambdaY);
+    cout << "Theta = " << thetaCrtano*180/CV_PI "degres" << endl;
+    cout << "Rho = " << rhoCrtano << "mm" << endl;
+    return 0;
+}
+\end{lstlisting}
+
+\newpage
+\begin{figure}
+\centering
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{images/lab3-sample-01.png}
+  \caption{A figure}
+  \label{fig:test1}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+  \centering
+  \includegraphics[width=.9\linewidth]{images/lab3-sample-02.png}
+  \caption{Another figure}
+  \label{fig:test2}
+\end{minipage}
+\end{figure}
 
 \begin{figure}[h]
 \centering
-\includegraphics[scale=0.4]{images/lab3-02-ht.png}
+\includegraphics[scale=0.32]{images/lab3-sample-03.png}
 \caption{Houghova transformacija}
-\label{fig:lab3-02-ht}
+\label{fig:lab3-sample-03}
 \end{figure}
 
-\begin{lstlisting}[language=C,caption={Racunanje parametra ro i theta}]
-void callHoughTransform( ){
-    vector<Vec2f> lines;
-    HoughLines( canny_out, lines, 1, CV_PI/180, 100, 0, 0 );
-    cout << "Lines = " << Mat( lines ) << endl;
-    float rho, rho_roi, theta;
-    rho_roi= lines[0][0];
-    theta = lines[0][1];
-    // prebacivanje u k.s. slike
-    rho = rho_roi + pt1.x * cos( theta ) + pt1.y * sin( theta );
-    cout << "rho_roi = " << rho_roi << endl;
-    cout << "theta = " << theta << endl;
-    // ucitavanje parametara kamere
-    FileStorage fs("calib/cam.xml", FileStorage::READ);
-    Mat intrinsics(3, 3, CV_32F ); 
-    Mat distortion( 5, 1, CV_32F );
-    fs["camera_matrix"] >> intrinsics; //3*3
-    fs["distortion_coefficients"] >> distortion; //4*1, kod mene 5*1
-    cout << "intrinsics = " << intrinsics <<  endl;
-    cout << "distortion = " << distortion <<  endl;
-    vector<Point3f> objectPoints(4);
-    objectPoints[0] = Point3f( 0, 0, 0 );
-    objectPoints[1] = Point3f( 0, 250, 0 );
-    objectPoints[2] = Point3f( 190, 0, 0 );
-    objectPoints[3] = Point3f( 190, 250, 0 );
-    cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
-    cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
-    Mat rvec( 1, 3, CV_32F );
-    Mat tvec( 1, 3, CV_32F );
-    Mat R( 3, 3, CV_32F );
-    Mat A( 3, 3, CV_32F );
-    Mat B( 3, 1, CV_32F );
-    solvePnP( Mat(objectPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false );
-    cout << "tvec = " << tvec <<  endl;
-    Rodrigues( rvec, R );
-    A = intrinsics * R; // A = P * R
-    B = intrinsics * tvec; // B = P * t
-    double lambdaX, lambdaY, lambdaRo, rho_crtano, theta_crtano;
-    // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31
-    lambdaX = A.at<double>(0,0) * cos(theta) + A.at<double>(1,0) * sin(theta) - rho * (A.at<double>(2,0));
-    // lambdaY = a12*cos(theta) + a22*sin(theta) - ro*a32
-    lambdaY = A.at<double>(0,1) * cos(theta) + A.at<double>(1,1) * sin(theta) - rho * (A.at<double>(2,1));
-    // lamdbaRo = b3*ro - b1*cos(theta) - b2*sin(theta) 
-    lambdaRo = rho * (B.at<double>(2)) - B.at<double>(0) * cos(theta) - B.at<double>(1) * sin(theta); 
-    theta_crtano = atan2( lambdaY, lambdaX );
-    rho_crtano = lambdaRo / sqrt( lambdaX * lambdaX + lambdaY * lambdaY );
-    cout << "Theta = " << theta_crtano*180/CV_PI << endl;
-    cout << "Rho = " << rho_crtano << endl;
-}
+\subsection{Rezultati}
 
-\end{lstlisting}
+\begin{center}
+\centering
+\begin{tabular}
+{ l || c | c | p{1.6 cm} | p{1.6 cm}  }
+{uzorak}  & {\(\theta\) $[mm]$ } & {\(\rho \) $[mm]$} & {izmjerena \(\theta\) $[mm]$} & {izmjeren \(\rho\) $[mm]$} \\ \hline
+ht-sample-01 & 45.33 & 28.80 & 45 & 30 \\ \hline
+ht-sample-02 & 31.86 & 36.57 & 32 & 39 \\ \hline
+ht-sample-03 & 2.54 & 43.41 & 3 & 44 \\ 
+\end{tabular}
+\end{center}
 
+\newpage
 \subsection{Zaključak}
-
 
