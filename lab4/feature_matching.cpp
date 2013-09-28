@@ -378,18 +378,14 @@ int callHoughTransform ()
     HoughLines (cannyOut, lines, 1, CV_PI/180, 100, 0, 0);
     // cout << "Lines = " << Mat( lines ) << endl;
     if (lines.empty()) {
-        cout << "HT didn't find any lines, run canny again with more\
-            details\n";
+        cout << "HT didn't find lines, run edge with more details\n";
         return -1;
     }
     float rho, rhoRoi, theta;
     rhoRoi = lines[0][0];
     theta = lines[0][1];
-
-    cout << "rhoRoi = " << rhoRoi << endl;
-    // rho 
+    // Computes rho in image c.s.
     rho = rhoRoi + pt1.x * cos(theta) + pt1.y * sin(theta);
-    cout << "rho = " << rho << endl;
     // cout << "theta = " << theta << endl;
 
     // Read calibration parameters
@@ -453,14 +449,23 @@ int callHoughTransform ()
     lambdaRo = rho * (B.at<double>(2)) - B.at<double>(0) * cos(theta) -
         B.at<double>(1) * sin(theta); 
 
-    thetaCrtano = atan2 (lambdaY, lambdaX);
+    thetaCrtano = atan2 (lambdaX, lambdaY);
     rhoCrtano = lambdaRo / sqrt (lambdaX * lambdaX + lambdaY * lambdaY);
-    cout << "Theta = " << thetaCrtano*180/CV_PI << endl;
-    cout << "Rho = " << rhoCrtano << endl;
-    // ispisat text na sliku
-    // cv::putText(imgOut, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
-    return 0;
+    cout << "Theta = " << thetaCrtano*180/CV_PI << " degres" << endl;
+    cout << "Rho = " << rhoCrtano << " mm" << endl;
 
+    // Put rho and Theta on image
+    char text[40];
+    Point location;
+    location.x = ssBox.width/6;
+    location.y = ssBox.height/2;
+    sprintf(text,"Theta: %6.2f [deg]", thetaCrtano*180/CV_PI);
+    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
+    location.y += 20;
+    sprintf(text,"Rho: %6.2f [mm]", rhoCrtano);
+    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
+
+    return 0;
 }
 
 void surfFlannMatcher ()
