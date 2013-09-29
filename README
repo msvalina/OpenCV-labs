@@ -1,3 +1,0 @@
-Zadaci iz laboratorijskih vjezbi s predmeta računalni vid
-Kompajliranje se moze odradit s:
-g++ `pkg-config --cflags --libs opencv` edge_crop_video.cpp  -Wall -o binary 
