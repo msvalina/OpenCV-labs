@@ -32,7 +32,7 @@ void matchTemplateTrackbar ();
 void matchTemplateOnCrop (int, void*);
 void getPoints (int event, int x, int y, int flags, void* param);
 void savePoint (int x, int y);
-int callHoughTransform ();
+void callHoughTransform ();
 void surfFlannMatcher ();
 
 Mat loadedImg, ssImg, camFrame;
@@ -130,7 +130,8 @@ int main (int argc, char** argv)
                         cout << "Points?!1\n";
                     }
                     setMouseCallback (imageName, getPoints, 0);
-                    cout << "No data from camera. Using argv[1] or \ default image\n";
+                    cout << "No data from camera. Using argv[1]"
+                         << "or default image\n";
                 }
                 else { 
                 cannyEdge (ssImg, ssBox);
@@ -365,7 +366,7 @@ void getPoints (int event, int x, int y, int flags, void* param)
     }
 }
 
-int callHoughTransform ()
+void callHoughTransform ()
 {
     /*
      * Find lines in edge point image using Hough Transform
@@ -379,7 +380,7 @@ int callHoughTransform ()
     // cout << "Lines = " << Mat( lines ) << endl;
     if (lines.empty()) {
         cout << "HT didn't find lines, run edge with more details\n";
-        return -1;
+        return;
     }
     float rho, rhoRoi, theta;
     rhoRoi = lines[0][0];
@@ -460,77 +461,131 @@ int callHoughTransform ()
     location.x = ssBox.width/6;
     location.y = ssBox.height/2;
     sprintf(text,"Theta: %6.2f [deg]", thetaCrtano*180/CV_PI);
-    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
+    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, 
+            cv::Scalar::all(255), 1);
     location.y += 20;
     sprintf(text,"Rho: %6.2f [mm]", rhoCrtano);
-    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, cv::Scalar::all(255), 1);
+    putText(loadedImg, text, location, CV_FONT_HERSHEY_DUPLEX, 0.5, 
+            cv::Scalar::all(255), 1);
 
-    return 0;
+    return;
 }
 
 void surfFlannMatcher ()
 {
-    Mat img1 = imread (globalArgv[1], CV_LOAD_IMAGE_GRAYSCALE);
-    Mat img2 = imread (globalArgv[2], CV_LOAD_IMAGE_GRAYSCALE);
-    if (!img1.data || !img2.data)  
-        cout << " --(!) Error reading images " << endl;
+    Mat imgObject = imread (globalArgv[1], CV_LOAD_IMAGE_GRAYSCALE);
+    Mat imgScene = imread (globalArgv[2], CV_LOAD_IMAGE_GRAYSCALE);
 
-    //-- Step 1: Detect the keypoints using SURF Detector
+    if (!imgObject.data || !imgScene.data) { 
+      cout<< "Error reading images " << endl; 
+      return; 
+    }
+
+    // Detect the keypoints using SURF Detector
+    // Threshold for the keypoint detector. Only features, whose hessian
+    // is larger than minHessian are retained by the detector.
+    // Therefore, the larger the value, the less keypoints you will get.
     int minHessian = 400;
 
     SurfFeatureDetector detector(minHessian);
 
-    std::vector<KeyPoint> keypoints1, keypoints2;
+    vector<KeyPoint> keypointsObject, keypointsScene;
 
-    detector.detect (img1, keypoints1);
-    detector.detect (img2, keypoints2);
+    // Detection of object and scene keypoints (location, 
+    // diameter of the meaningful keypoint neighborhood)
+    detector.detect (imgObject, keypointsObject);
+    detector.detect (imgScene, keypointsScene);
+    cout << "Number of keypoints in object: " << 
+        keypointsObject.size() << endl;
+    cout << "Number of keypoints in scene: " << 
+        keypointsScene.size() << endl;
 
-    //-- Step 2: Calculate descriptors (feature vectors)
+    // Calculate descriptors (feature vectors)
+    // on detected keypoints
     SurfDescriptorExtractor extractor;
+    Mat descriptorsObject, descriptorsScene;
+    extractor.compute (imgObject, keypointsObject, descriptorsObject);
+    extractor.compute (imgScene, keypointsScene, descriptorsScene);
 
-    Mat descriptors1, descriptors2;
-
-    extractor.compute( img1, keypoints1, descriptors1 );
-    extractor.compute( img2, keypoints2, descriptors2 );
-
-    //-- Step 3: Matching descriptor vectors using FLANN matcher
+    // Matching descriptor vectors using FLANN matcher
+    // Fast approximate nearest neighbor
     FlannBasedMatcher matcher;
-    std::vector<DMatch> matches;
-    matcher.match (descriptors1, descriptors2, matches);
+    // DMatch - Class for matching keypoint descriptors
+    vector<DMatch> matches;
+    matcher.match (descriptorsObject, descriptorsScene, matches);
 
-    double max_dist = 0; double min_dist = 100;
+    double maxDist = 0; double minDist = 100;
 
-    //-- Quick calculation of max and min distances between keypoints
-    for (int i = 0; i < descriptors1.rows; i++) { 
+    // Quick calculation of max and min distances between keypoints
+    for( int i = 0; i < descriptorsObject.rows; i++ ) { 
         double dist = matches[i].distance;
-        if (dist < min_dist) min_dist = dist;
-        if (dist > max_dist) max_dist = dist;
+        if( dist < minDist ) minDist = dist;
+        if( dist > maxDist ) maxDist = dist;
     }
 
-    printf ("-- Max dist : %f \n", max_dist);
-    printf ("-- Min dist : %f \n", min_dist);
+    // Class for matching keypoint descriptors: query descriptor index,
+    // train descriptor index, train image index, and distance between
+    // descriptors.
+    vector<DMatch> goodMatches;
 
-    //-- Draw only "good" matches (i.e. whose distance is less than 2*min_dist )
-    //-- PS.- radiusMatch can also be used here.
-    std::vector<DMatch> goodMatches;
+    // Draw only "good" matches (i.e. whose distance is 
+    // less than 3*minDist )
+    for( int i = 0; i < descriptorsObject.rows; i++ )
+    { if( matches[i].distance < 3*minDist )
+     { goodMatches.push_back( matches[i]); }
+    }
+    cout << "Number of goodMatches: " << goodMatches.size() << endl;
 
-    for (int i = 0; i < descriptors1.rows; i++) { 
-        if (matches[i].distance < 2*min_dist) 
-            goodMatches.push_back( matches[i]); 
-    }  
-
-    //-- Draw only "good" matches
     Mat imgMatches;
-    drawMatches (img1, keypoints1, img2, keypoints2, 
-            goodMatches, imgMatches, Scalar::all(-1), Scalar::all(-1), 
-            vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS); 
+    // Draws only paired keypoints with random colors
+    drawMatches (imgObject, keypointsObject, imgScene, keypointsScene,
+               goodMatches, imgMatches, Scalar::all(-1), 
+               Scalar::all(-1), vector<char>(), 
+               DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-    //-- Show detected matches
-    imshow ("Good Matches", imgMatches);
+    // Localize the object
+    vector<Point2f> obj;
+    vector<Point2f> scene;
 
     for (int i = 0; i < goodMatches.size(); i++) {
-        printf( "-- Good Match [%d] Keypoint 1: %d  -- Keypoint 2: %d \
-                \n", i, goodMatches[i].queryIdx, 
-                goodMatches[i].trainIdx); 
+    // Get the keypoints location from the good matches
+    obj.push_back (keypointsObject[ goodMatches[i].queryIdx ].pt);
+    scene.push_back (keypointsScene[ goodMatches[i].trainIdx ].pt);
     }
+
+    // Finds a perspective transformation between two planes.
+    // Using RANSAC method
+    Mat H = findHomography (obj, scene, CV_RANSAC);
+    cout << H << endl;
+
+    // Get the corners from the image_1 ( the object to be "detected" )
+    vector<Point2f> objCorners(4);
+    objCorners[0] = cvPoint (0,0); 
+    objCorners[1] = cvPoint (imgObject.cols, 0);
+    objCorners[2] = cvPoint (imgObject.cols, imgObject.rows); 
+    objCorners[3] = cvPoint (0, imgObject.rows);
+    vector<Point2f> sceneCorners(4);
+
+    // Perfom perspective transform 
+    perspectiveTransform (objCorners, sceneCorners, H);
+
+    // Draw lines between the corners 
+    // (the mapped object in the scene - image_2 )
+    line (imgMatches, sceneCorners[0] + Point2f (imgObject.cols, 0), 
+            sceneCorners[1] + Point2f (imgObject.cols, 0), 
+            Scalar(0, 255, 0), 4);
+    line (imgMatches, sceneCorners[1] + Point2f (imgObject.cols, 0), 
+            sceneCorners[2] + Point2f (imgObject.cols, 0), 
+            Scalar( 0, 255, 0), 4);
+    line (imgMatches, sceneCorners[2] + Point2f (imgObject.cols, 0), 
+            sceneCorners[3] + Point2f (imgObject.cols, 0), 
+            Scalar( 0, 255, 0), 4);
+    line (imgMatches, sceneCorners[3] + Point2f (imgObject.cols, 0), 
+            sceneCorners[0] + Point2f (imgObject.cols, 0), 
+            Scalar( 0, 255, 0), 4);
+
+    // Show detected matches
+    imshow ("Good Matches & Object detection", imgMatches);
+
+    waitKey(0);
 }
