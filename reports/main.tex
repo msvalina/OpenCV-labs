@@ -1,7 +1,7 @@
 \documentclass[12pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[croatian]{babel} % For Croatian 
-\usepackage[T1]{fontenc} % Better hyphenation for wrods with digraphs čćžšđ
+\usepackage[T1]{fontenc} % Better hyphenation for wrods like čćžšđ
 \usepackage{graphicx}
 \usepackage{color}
 \usepackage{float} % For manualy figure postioning
@@ -13,15 +13,16 @@
 \usepackage{fancyhdr} % For fancy headers and footers
 \usepackage[nottoc]{tocbibind} % For adding Bilbiography in TOC
 \usepackage{amsmath}
-% ---------------------------------------------------------------------------
+% -------------------------------------------------------------------
 % Fancy header definition
-% ---------------------------------------------------------------------------
+% -------------------------------------------------------------------
 \setlength{\headheight}{15.2pt}
 \pagestyle{fancy}
 \fancyhf{}
 \rhead{ \bfseries \color{MidnightBlue}  }
-\renewcommand{\sectionmark}[1]{\markright{#1}{}} % Section mark to small case
-\renewcommand{\subsectionmark}[1]{\markright{#1}{}} % Section mark to small case
+% Section and subsection mark to small case
+\renewcommand{\sectionmark}[1]{\markright{#1}{}} 
+\renewcommand{\subsectionmark}[1]{\markright{#1}{}} 
 \lhead{\sectionmark}
 \lhead{\rightmark}
 \rfoot{\thepage}
@@ -30,58 +31,80 @@
 \renewcommand\lstlistingname{Unos}
 \renewcommand\lstlistlistingname{Unos}
 
-\lstnewenvironment{code}[1][]%
-  {\minipage{\linewidth} 
-   \lstset{
-        basicstyle=\ttfamily\footnotesize,
-        language=Matlab,
-        captionpos=b,
-        keywordstyle=\color{blue},
-        frame=single,
-        #1}}
-  {\endminipage}
-
 \definecolor{mygreen}{rgb}{0,0.6,0}
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
 
 \lstset{ %
-  backgroundcolor=\color{white},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
-  basicstyle=\footnotesize\ttfamily,% the size of the fonts that are used for the code
-  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
-  breaklines=true,                 % sets automatic line breaking
-  captionpos=b,                    % sets the caption-position to bottom
-  commentstyle=\color{mygreen},    % comment style
-  deletekeywords={...},            % if you want to delete keywords from the given language
-  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
-  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
-  frame=single,                    % adds a frame around the code
-  keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
-  keywordstyle=\color{blue},       % keyword style
-  language=C,                      % the language of the code
-  morekeywords={*,...},            % if you want to add more keywords to the set
-  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
-  numbersep=5pt,                   % how far the line-numbers are from the code
-  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
-  rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
-  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
-  showstringspaces=false,          % underline spaces within strings only
-  showtabs=false,                  % show tabs within strings adding particular underscores
-  stepnumber=2,                    % the step between two line-numbers. If it's 1, each line will be numbered
-  stringstyle=\color{mymauve},     % string literal style
-  tabsize=2,                       % sets default tabsize to 2 spaces
-  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+% choose the background color; you must add \usepackage{color} or
+% \usepackage{xcolor}
+    backgroundcolor=\color{white},   
+% the size of the fonts that are used for the code
+    basicstyle=\footnotesize\ttfamily,
+% sets if automatic breaks should only happen at whitespace
+    breakatwhitespace=false,         
+% sets automatic line breaking
+    breaklines=true,                 
+% sets the caption-position to bottom
+    captionpos=b,                    
+% comment style
+    commentstyle=\color{mygreen},    
+% if you want to delete keywords from the given language
+    deletekeywords={...},            
+% if you want to add LaTeX within your code
+    escapeinside={\%*}{*)},          
+% lets you use non-ASCII characters; for 8-bits encodings only, does not
+% work with UTF-8
+    extendedchars=true,              
+% adds a frame around the code
+    frame=single,                    
+% keeps spaces in text, useful for keeping indentation of code (possibly
+% needs columns=flexible)
+    keepspaces=true,                 
+% keyword style
+    keywordstyle=\color{blue},       
+% the language of the code
+    language=C,                      
+% if you want to add more keywords to the set
+    morekeywords={*,...},            
+% where to put the line-numbers; possible values are (none, left, right)
+    numbers=left,                    
+% how far the line-numbers are from the code
+    numbersep=5pt,                   
+% the style that is used for the line-numbers
+    numberstyle=\tiny\color{mygray}, 
+% if not set, the frame-color may be changed on line-breaks within
+% not-black text (e.g. comments (green here))
+    rulecolor=\color{black},         
+% show spaces everywhere adding particular underscores; it overrides
+% 'showstringspaces'
+    showspaces=false,                
+% underline spaces within strings only
+    showstringspaces=false,          
+% show tabs within strings adding particular underscores
+    showtabs=false,                  
+% the step between two line-numbers. If it's 1, each line will be
+% numbered
+    stepnumber=2,                    
+% string literal style
+    stringstyle=\color{mymauve},     
+% sets default tabsize to 2 spaces
+    tabsize=2,                       
+% show the filename of files included with \lstinputlisting; also try
+% caption instead of title
+    title=\lstname                   
 }
 
 \begin{document}
 
-% Section, figure, table numbering
+% Section, figure, table, listing numbering
 \renewcommand{\thesection}{\arabic{section}.}
 \renewcommand{\thesubsection}{\arabic{section}.\arabic{subsection}}
 \renewcommand{\thefigure}{\arabic{section}.\arabic{figure}} 
 \renewcommand{\thetable}{\arabic{section}.\arabic{table}}
+\renewcommand{\thelstlisting}{\thesection\arabic{lstlisting}}
 
-\include{00_naslovna}
+\include{00_titlepage}
 
 \include{01_lab1}
 
@@ -91,7 +114,9 @@
 
 \include{04_lab4}
 
-%\include{05_peta}
+\include{05_lab5}
+
+\include{06_lab6}
 
 \end{document}
 
