@@ -15,16 +15,26 @@ inline int rand (int min, int max)
 
 int main (int argc, char *argv[])
 {
+    string imgFile;
+    char *dFile;
+    if (argc < 2) {
+        cout << "Using first default KincktPic" << endl;
+        imgFile = "../assignments/kinecktPics/KinectPics\\sl-00001.bmp";
+        dFile = "../assignments/kinecktPics/KinectPics\\sl-00001-D.txt";
+    }
+    else {
+        imgFile = argv[1];
+        dFile = argv[2];
+    }
+
     // Load color image
-    string imgFile = "../assignments/kinecktPics/KinectPics\\sl-00001.bmp";
     Mat img = imread(imgFile, CV_LOAD_IMAGE_COLOR);
     if (img.data == NULL) 
         return -1;
 
     // Load Kinect depth map
     Mat imgDepth(img.rows, img.cols, CV_8UC1);
-    char *depthFile = "../assignments/kinecktPics/KinectPics\\sl-00001-D.txt";
-    if (readImg(depthFile, &imgDepth) == 0) 
+    if (readImg(dFile, &imgDepth) == 0) 
         return -1;
 
     // Use RANSAC to determine dominant plane
