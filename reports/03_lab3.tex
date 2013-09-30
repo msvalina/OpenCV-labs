@@ -1,17 +1,20 @@
+\setcounter{figure}{0}
+\setcounter{lstlisting}{0}
 \section{Vježba 3: Houghova transformacija}
 
 \subsection{Opis vježbe}
 Potrebno je pomoću, prethodno kalibrirane, web kamere uslikati objekt
 kvadratnog oblika koji je postavljen na milimetarskom papiru na stolu.
-Primjenom Houghove transformacije (HT) treba odrediti parametre \(\rho
-\) i \( \theta \)najdominantnijeg pravca, koji odgovara jednom od rubova objekta
-na slici. Pod najdominantnijim pravcem podrazumijeva se pravac kojem
-pripada najveći broj 'glasova' u akumulacijskoj ravnini. Implementacija
-HT u biblioteci OpenCV vraća popis detektiranih pravaca koji su
-razvrstani prema broju 'glasova' počevši od najdominantnijeg. Primjenom
-odgovarajuće transformacije, odrediti \(\rho i \theta \)tog pravca u
-koordinatnom sustavu milimetarskog papira. Provjeriti koliko je
-odstupanje dobivenog pravca od stvarnog (odgovarajućeg) ruba objekta.
+Primjenom Houghove transformacije (HT) treba odrediti parametre 
+\(\rho\) i \(\theta\) najdominantnijeg pravca, koji odgovara jednom od
+rubova objekta na slici. Pod najdominantnijim pravcem podrazumijeva se
+pravac kojem pripada najveći broj 'glasova' u akumulacijskoj ravnini.
+Implementacija HT u biblioteci OpenCV vraća popis detektiranih pravaca
+koji su razvrstani prema broju 'glasova' počevši od najdominantnijeg.
+Primjenom odgovarajuće transformacije, odrediti \(\rho\) i \(\theta\)
+tog pravca u koordinatnom sustavu milimetarskog papira. Provjeriti
+koliko je odstupanje dobivenog pravca od stvarnog (odgovarajućeg) ruba
+objekta.
 
 \subsection{Kalibracija kamere}
 Cijenovna prihvatljivosti web kamera ima svoju negativnu stranu, a to je
@@ -162,13 +165,13 @@ int callHoughTransform ()
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=.9\linewidth]{images/lab3-sample-01.png}
-  \caption{A figure}
+  \caption{ht-sample-01}
   \label{fig:test1}
 \end{minipage}%
 \begin{minipage}{.5\textwidth}
   \centering
   \includegraphics[width=.9\linewidth]{images/lab3-sample-02.png}
-  \caption{Another figure}
+  \caption{ht-sample-02}
   \label{fig:test2}
 \end{minipage}
 \end{figure}
@@ -176,7 +179,7 @@ int callHoughTransform ()
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.32]{images/lab3-sample-03.png}
-\caption{Houghova transformacija}
+\caption{ht-sample-03}
 \label{fig:lab3-sample-03}
 \end{figure}
 
