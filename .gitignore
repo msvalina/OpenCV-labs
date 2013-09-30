@@ -2,5 +2,6 @@ lab1/edge_crop_video
 lab2/template_matching
 lab3/hough_transform
 lab4/feature_matching
+lab6/dominant_plane
 *.log
 tags
