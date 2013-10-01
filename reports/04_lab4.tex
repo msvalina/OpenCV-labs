@@ -154,3 +154,24 @@ void surfFlannMatcher ()
 
 \newpage
 \subsection{Zaključak}
+Cilj ove vježbe bio je izrađeni 2D model objekta prepoznati na 
+slici koja je snimljena iz drugog položaja.
+To smo postigli koristeći SURF (engl. \textit{Speeded Up Robust
+Features} metodu za određivanje značajki. Prvo smo pomoću
+\textit{SurfFeatureDetector()} klase detektirali ključne točke
+objekta i scene. Zatim smo koristeći \textit{SurfDescriptorExtractor()}
+klasu pronašli značajke ključnih točaka objekta i scene. Zatim smo
+sparili značajke ključnih točaka objekta i scene. Na kraju smo prikazali
+samo one točke kojima smo pronašli par te smo nacrtali dužine između
+sparenih parova točaka.
+\\
+Slika koju smo koristili za testiranje je pažljivo odabrana jer se radi
+o sličnim crtežima različitih cvijetova. Također treba primjetiti
+da slike imaju slične ali različite okvire. Te smo upravo na ovakvom
+primjeru pokazali spospobnosti SURF algoritma za detekciju značajki.
+\\
+Programi koji detektiraju i opisuju značajke te su još neovisni o
+rotaciji i veličini objekta kojeg opisuju imaju veliki značaj u
+aplikacijama koje se bave detekcijom objekata. Ove metode su isto tako
+dosta otporne na šum i promjenu osvijetljenja. 
+
