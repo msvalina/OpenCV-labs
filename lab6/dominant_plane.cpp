@@ -47,6 +47,7 @@ int main (int argc, char *argv[])
         vector<float> points, depth, plane;
         points.clear(); depth.clear(); plane.clear();
 
+        // Choose 3 random points and their depth
         for (int j = 0; j < 3; j++) {
             int u = rand (0, img.cols);
             int v = rand (0, img.cols);
@@ -59,9 +60,11 @@ int main (int argc, char *argv[])
             depth.push_back((float)d);
         }
 
+        // Check if points are on the same plane else skip iteration
         if (!isPlane (points, depth, &plane))
-            continue; // Invalid point, skip iteration
+            continue; 
 
+        // Calculate number of points on the same plane
         int num = planePoints (&imgDepth, plane);
         if (num > bestPlane) {
             bestPlane = num;
@@ -148,9 +151,8 @@ bool isPlane (vector<float> points, vector<float> depth, vector<float> *plane)
     Mat Z_(3, 1, CV_32FC1, &depth[0]);
     Mat p_(3, 1, CV_32FC1);
 
-    // Solves linear system with two equations
-    // if (u,v) are on the same plane as depth
-    // save plane location
+    // Solves linear system with three equations
+    // if there is solution save plane location
     if (solve(A_, Z_, p_)) {
         for (int i = 0; i < 3; i++) plane->push_back(p_.at<float>(i));
         return 1; // valid points
@@ -163,7 +165,7 @@ int planePoints (Mat *depth, vector<float> plane)
     float thr = 4.0f; // threshold
     int nMatch = 0; // number of matches
 
-    // Calculate number of points on the sam plain/depth
+    // Calculate number of points on the same plane
     for (int j = 0; j < depth->rows; j++) {
         for (int i = 0; i < depth->cols; i++) {
             uchar d = depth->at<uchar>(j,i);
