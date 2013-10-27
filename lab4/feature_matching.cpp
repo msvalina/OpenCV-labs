@@ -3,6 +3,12 @@
 #include "opencv2/nonfree/features2d.hpp"
 #include <iostream>
 
+#ifdef DEBUG
+#define dout cout
+#else
+#define dout 0 && cout
+#endif
+
 using namespace cv;
 using namespace std;
 
@@ -193,10 +199,10 @@ void onMouse (int event, int x, int y, int flags, void* param)
                 cropBox.y+=cropBox.height;
                 cropBox.height*=-1;
             }
-            // cout << "box coordinates \n" 
-            //     << "x\t y\t height\t width\n"
-            //     << cropBox.x << "\t" << cropBox.y << "\t" 
-            //     << cropBox.height << "\t" << cropBox.width << "\n";
+            dout << "box coordinates \n" 
+                << "x\t y\t height\t width\n"
+                << cropBox.x << "\t" << cropBox.y << "\t" 
+                << cropBox.height << "\t" << cropBox.width << "\n";
             showSelRoi (image, cropBox);
             break;
     }
@@ -306,8 +312,8 @@ void matchTemplateOnCrop (int, void*)
         for (int x = 1; x < resultImg.cols -1; x++) {
             // search postion (y,x) but draw at (x,y) 
             if (resultImg.at<float>(y,x) > 0) {
-                // cout << y << "," << x << " = " <<
-                // resultImg.at<float>(y,x) << " , ";
+                dout << y << "," << x << " = " <<
+                resultImg.at<float>(y,x) << " , ";
                 rectangle (sourceImg, Point (x,y), Point
                         (x + templImg.cols, y + templImg.rows),
                         Scalar (0,255,0));  
@@ -377,7 +383,7 @@ void callHoughTransform ()
      */
     vector<Vec2f> lines;
     HoughLines (cannyOut, lines, 1, CV_PI/180, 100, 0, 0);
-    // cout << "Lines = " << Mat( lines ) << endl;
+    dout << "Lines = " << Mat( lines ) << endl;
     if (lines.empty()) {
         cout << "HT didn't find lines, run edge with more details\n";
         return;
@@ -387,7 +393,7 @@ void callHoughTransform ()
     theta = lines[0][1];
     // Computes rho in image c.s.
     rho = rhoRoi + pt1.x * cos(theta) + pt1.y * sin(theta);
-    // cout << "theta = " << theta << endl;
+    dout << "theta = " << theta << endl;
 
     // Read calibration parameters
     FileStorage fs ("../lab3/calib/cam-c270.xml", FileStorage::READ);
@@ -399,8 +405,8 @@ void callHoughTransform ()
     // correcting cameras radial and tangential distortion
     Mat distortion (5, 1, CV_32F);
     fs ["distortion_coefficients"] >> distortion; 
-    // cout << "intrinsics = " << intrinsics <<  endl;
-    // cout << "distortion = " << distortion <<  endl;
+    dout << "intrinsics = " << intrinsics <<  endl;
+    dout << "distortion = " << distortion <<  endl;
 
     // Dimension's of graph paper in mm
     vector<Point3f> objectPoints (4);
@@ -408,15 +414,15 @@ void callHoughTransform ()
     objectPoints[1] = Point3f (0, 265, 0);
     objectPoints[2] = Point3f (170, 0, 0);
     objectPoints[3] = Point3f (170, 265, 0);
-    // cout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
-    // cout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
+    dout << "A vector of 3D Object Points = " << objectPoints << endl << endl;
+    dout << "A vector of 2D Image Points = " << imagePoints << endl << endl;
 
     // Rotation vector output from solvePnP
     Mat rvec (1, 3, CV_32F);
     // Translation vetor - descrabise position of object c.s. in regards
     // to camera c.s
     Mat tvec (1, 3, CV_32F);
-    /* cout << "tvec = " << tvec <<  endl; */
+    dout << "tvec = " << tvec <<  endl;
 
     // Estimate object position from 3D-2D point correspondences.
     solvePnP (Mat (objectPoints), Mat (imagePoints), intrinsics,
@@ -427,7 +433,7 @@ void callHoughTransform ()
     Mat R (3, 3, CV_32F);
     // Converts rotation vector to rotation matrix
     Rodrigues (rvec, R);
-    //cout << "R = " << R <<  endl;
+    dout << "R = " << R <<  endl;
 
     // A matrix store unit converted rotation matrix
     Mat A (3, 3, CV_32F);
@@ -436,8 +442,8 @@ void callHoughTransform ()
     // B vector stores crorrected translation vector
     Mat B (3, 1, CV_32F);
     B = intrinsics * tvec;
-    //cout << "B = " << B <<  endl;
-    //cout << "A = " << endl << " " << A << endl << endl;
+    dout << "B = " << B <<  endl;
+    dout << "A = " << endl << " " << A << endl << endl;
 
     double lambdaX, lambdaY, lambdaRo, rhoCrtano, thetaCrtano;
     // lambdaX = a11*cos(theta) + a21*sin(theta) - ro*a31

@@ -12,6 +12,10 @@ Code can be compiled using:
 
     g++ fooBar.cpp -o fooBinary `pkg-config --cflags --libs opencv`
 
+or for DEBUG output
+
+    g++ -DDEBUG fooBar.cpp -o fooBinary `pkg-config --cflags --libs opencv`
+
 ### Lab1 
 Intro to OpenCV library   
 Canny edge detector  
